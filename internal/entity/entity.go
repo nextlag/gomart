@@ -31,7 +31,7 @@ type Points struct {
 	Accrual *float32 `json:"accrual"`
 }
 
-type Request struct {
+type Entity struct {
 	Order
 	User
 	Points

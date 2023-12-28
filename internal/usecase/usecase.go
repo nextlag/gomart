@@ -1,57 +1,34 @@
 package usecase
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/nextlag/gomart/internal/entity"
 )
 
-type Entity interface {
-	GetEntityRequest() *entity.Request
+type Repository interface {
+	GetBalance(ctx context.Context) error
 }
 
 type UseCase struct {
-	entity Entity // interface Entity
-	req    entity.Request
+	repo Repository // interface Repository
+	e    *entity.Entity
 }
 
-func (uc *UseCase) GetEntityRequest() *entity.Request {
-	return &uc.req
+func New(r Repository) *UseCase {
+	e := &entity.Entity{}
+	return &UseCase{r, e}
 }
 
-func New(e Entity) *UseCase {
-	r := UseCase{}.req
-	return &UseCase{e, r}
+func NewEntity(uc UseCase) *entity.Entity {
+	return uc.e
 }
 
-func (uc *UseCase) DoRequest() {
-	uc.entity.GetEntityRequest()
-}
-
-func NewRequest(login, order, status, uploadedAt string, bonusesWithdrawn, accrual *float32, id int, user, pass string, time string) Entity {
-	return &UseCase{
-		req: entity.Request{
-			Order: entity.Order{
-				Login:            login,
-				Order:            order,
-				Status:           status,
-				UploadedAt:       uploadedAt,
-				BonusesWithdrawn: bonusesWithdrawn,
-				Accrual:          accrual,
-			},
-			User: entity.User{
-				ID:       id,
-				Username: user,
-				Password: pass,
-			},
-			Points: entity.Points{
-				Order:   order,
-				Status:  status,
-				Accrual: accrual,
-			},
-			OWSB: entity.OWSB{
-				Order:            order,
-				Time:             time,
-				BonusesWithdrawn: bonusesWithdrawn,
-			},
-		},
+func (uc *UseCase) Do(ctx context.Context) error {
+	err := uc.repo.GetBalance(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get balance: %w", err)
 	}
+	return nil
 }

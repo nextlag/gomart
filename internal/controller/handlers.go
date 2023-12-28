@@ -1,9 +1,12 @@
-package handlers
+package controller
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+)
 
 type UseCase interface {
-	DoRequest()
+	Do(ctx context.Context) error
 }
 
 type Handlers struct {
