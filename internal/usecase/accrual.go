@@ -12,7 +12,7 @@ import (
 
 // GetAccrual - функция, отправляющая ордера в систему начисления
 // и получает обновления статуса с начисленными бонусами.
-func GetAccrual(order entity.Order, cfg config.Args, log *slog.Logger) entity.Points {
+func GetAccrual(order entity.Order, cfg config.HTTPServer, log *slog.Logger) entity.Points {
 	client := resty.New().SetBaseURL(cfg.Accrual)
 	var orderUpdate entity.Points
 	for {

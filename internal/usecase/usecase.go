@@ -8,12 +8,12 @@ import (
 )
 
 type Repository interface {
-	GetBalance(ctx context.Context) error
+	Register(ctx context.Context, login string, password string) error
 }
 
 type UseCase struct {
-	repo Repository // interface Repository
-	e    *entity.Entity
+	r Repository // interface Repository
+	e *entity.Entity
 }
 
 func New(r Repository) *UseCase {
@@ -25,8 +25,8 @@ func NewEntity(uc UseCase) *entity.Entity {
 	return uc.e
 }
 
-func (uc *UseCase) Do(ctx context.Context) error {
-	err := uc.repo.GetBalance(ctx)
+func (uc *UseCase) DoRegister(ctx context.Context, login, password string) error {
+	err := uc.r.Register(ctx, login, password)
 	if err != nil {
 		return fmt.Errorf("failed to get balance: %w", err)
 	}

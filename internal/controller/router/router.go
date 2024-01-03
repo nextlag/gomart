@@ -9,17 +9,17 @@ import (
 	"github.com/nextlag/gomart/internal/controller"
 	"github.com/nextlag/gomart/internal/mw/auth"
 	"github.com/nextlag/gomart/internal/mw/logger"
+	"github.com/nextlag/gomart/internal/usecase"
 )
 
-func SetupRouter(uc controller.UseCase, log *slog.Logger) *chi.Mux {
-	router := chi.NewRouter()
-	router.Use(middleware.RequestID)
-	router.Use(auth.WithCookieLogin(log))
+func SetupRouter(handler *chi.Mux, log *slog.Logger, useCase *usecase.UseCase) *chi.Mux {
+	handler.Use(middleware.RequestID)
+	handler.Use(auth.WithCookieLogin(log))
 
-	h := controller.New(uc)
+	h := controller.New(useCase)
 
 	// Используем контроллер в качестве хендлера
-	router.With(logger.New(log)).Route("/", func(r chi.Router) {
+	handler.With(logger.New(log)).Route("/", func(r chi.Router) {
 		r.Post("/api/user/login", h.Login)
 		r.Post("/api/user/register", h.Register)
 		r.Post("/api/user/orders", h.PostOrders)
@@ -29,5 +29,5 @@ func SetupRouter(uc controller.UseCase, log *slog.Logger) *chi.Mux {
 		r.Get("/api/user/orders", h.GetOrders)
 		r.Get("/api/user/withdrawals", h.Withdrawals)
 	})
-	return router
+	return handler
 }

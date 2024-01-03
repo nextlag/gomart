@@ -6,7 +6,7 @@ import (
 )
 
 type UseCase interface {
-	Do(ctx context.Context) error
+	DoRegister(ctx context.Context, login, password string) error
 }
 
 type Handlers struct {
