@@ -1,0 +1,38 @@
+### POST save
+POST http://localhost:8080/
+Host: localhost:8080
+Content-Type: text/plain
+
+https://google.com
+
+
+### POST register
+POST http://localhost:8080/api/user/register
+Host: localhost:8080
+Content-Type: application/json
+
+{
+  "login": "user",
+  "password": "123df23"
+}
+
+### Get
+# @no-redirect
+GET http://localhost:8080/2qEhT1TF
+
+
+### POST apiSave
+POST http://localhost:8080/api/shorten
+Host: localhost:8080
+Content-Type: application/json
+Cookie: UserID=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0NjJ9.F-iI0VyMryldEuPDYSSC8xzLbr8pZ211D1gTvrPcVUg
+
+{
+  "url": "https://practicum.yandex.com/",
+  "alias": "123df23"
+}
+
+### GET request with cookie passed through headers
+# @no-redirect
+GET http://localhost:8080/api/user/urls
+Cookie: UserID=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0NjJ9.F-iI0VyMryldEuPDYSSC8xzLbr8pZ211D1gTvrPcVUg

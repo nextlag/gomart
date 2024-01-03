@@ -12,13 +12,13 @@ import (
 
 // Register представляет собой контроллер для обработки регистрации пользователя.
 type Register struct {
-	uc  UseCase      // UseCase для обработки бизнес-логики регистрации
-	log *slog.Logger // Логгер для записи логов
+	uc  UseCase // UseCase для обработки бизнес-логики регистрации
+	log *slog.Logger
 }
 
 // NewRegister создает новый экземпляр контроллера Register.
-func NewRegister(uc UseCase) *Register {
-	return &Register{uc: uc}
+func NewRegister(uc UseCase, log *slog.Logger) *Register {
+	return &Register{uc: uc, log: log}
 }
 
 // ServeHTTP обрабатывает HTTP-запросы для регистрации пользователя.
@@ -55,11 +55,13 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Устанавливаем аутентификационную куку после успешной регистрации
-	if err := auth.SetAuth(w, user.Login, h.log); err != nil {
+	jwt, err := auth.SetAuth(w, user.Login, h.log)
+	if err != nil {
 		h.log.Error("Can't set cookie: ", err.Error())
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	h.log.Debug("authentication", "login", user.Login, "token", jwt)
 
 	// Возвращаем успешный статус и сообщение об успешной регистрации
 	w.WriteHeader(http.StatusOK)

@@ -29,8 +29,7 @@ const (
 )
 
 type Postgres struct {
-	DB  *sql.DB
-	Log *slog.Logger
+	DB *sql.DB
 }
 
 // CreateTable - создает таблицу в базе данных
@@ -65,8 +64,7 @@ func New(cfg string, log *slog.Logger) (*Postgres, error) {
 	}
 
 	storage := &Postgres{
-		DB:  db,
-		Log: log,
+		DB: db,
 	}
 
 	// Создание таблицы с использованием контекста

@@ -32,7 +32,7 @@ func buildJWTString(login string, log *slog.Logger) (string, error) {
 	// Подписывает токен с использованием секретного ключа и получает строку токена.
 	tokenString, err := token.SignedString([]byte(config.Cfg.SecretToken))
 	if err != nil {
-		log.Error("Ошибка подписи токена: ", err)
+		log.Error("Ошибка подписи токена: ", err.Error())
 		return "", err
 	}
 
@@ -40,12 +40,12 @@ func buildJWTString(login string, log *slog.Logger) (string, error) {
 }
 
 // SetAuth создает новую аутентификационную куку для предоставленного логина и устанавливает ее в HTTP-ответе.
-func SetAuth(res http.ResponseWriter, login string, log *slog.Logger) error {
+func SetAuth(res http.ResponseWriter, login string, log *slog.Logger) (string, error) {
 	// Сгенерировать токен JWT для логина.
 	jwt, err := buildJWTString(login, log)
 	if err != nil {
-		log.Error("Ошибка создания куки: ", err)
-		return err
+		log.Error("Ошибка создания куки: ", err.Error())
+		return "", err
 	}
 
 	// Создает новую HTTP-куку с токеном JWT и устанавливает ее в ответе.
@@ -56,7 +56,7 @@ func SetAuth(res http.ResponseWriter, login string, log *slog.Logger) error {
 	}
 	http.SetCookie(res, &cookie)
 
-	return nil
+	return jwt, nil
 }
 
 // getLogin извлекает логин пользователя из предоставленного токена JWT.
@@ -88,14 +88,14 @@ func GetCookie(req *http.Request, log *slog.Logger) (string, error) {
 	// Извлечь подписанную куку логина из запроса.
 	signedLogin, err := req.Cookie("Auth")
 	if err != nil {
-		log.Error("Ошибка при получении куки", err)
+		log.Error("Ошибка при получении куки", err.Error())
 		return "", errAuth
 	}
 
 	// Извлекает логин из токена JWT в куке.
 	login, err := getLogin(signedLogin.Value, log)
 	if err != nil {
-		log.Error("Ошибка при чтении куки", err)
+		log.Error("Ошибка при чтении куки", err.Error())
 		return "", err
 	}
 

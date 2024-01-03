@@ -20,12 +20,12 @@ func WithCookieLogin(log *slog.Logger) func(next http.Handler) http.Handler {
 			userLogin, err := GetCookie(r, log)
 			if err == errAuth {
 				// Если пользователь не аутентифицирован, вернуть код состояния 401 и сообщение об ошибке.
-				log.Error("Ошибка получения файла cookie", err)
+				log.Error("Ошибка получения файла cookie", err.Error())
 				http.Error(w, "Вы не аутентифицированы", http.StatusUnauthorized)
 				return
 			} else if err != nil {
 				// Если произошла внутренняя ошибка при чтении файла cookie, вернуть код состояния 500.
-				log.Error("Ошибка чтения файла cookie", err)
+				log.Error("Ошибка чтения файла cookie", err.Error())
 				http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
 				return
 			}

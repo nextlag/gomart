@@ -1,12 +1,15 @@
 package controller
 
-import "net/http"
+import (
+	"log/slog"
+	"net/http"
+)
 
 type Withdrawals struct {
 	uc UseCase
 }
 
-func NewWithdrawals(uc UseCase) *Withdrawals {
+func NewWithdrawals(uc UseCase, log *slog.Logger) *Withdrawals {
 	return &Withdrawals{uc: uc}
 }
 

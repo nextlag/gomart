@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 )
 
@@ -25,14 +26,14 @@ type Handlers struct {
 	Withdrawals http.HandlerFunc
 }
 
-func New(uc UseCase) *Handlers {
+func New(uc UseCase, log *slog.Logger) *Handlers {
 	return &Handlers{
-		Balance:     NewBalance(uc).ServeHTTP,
-		GetOrders:   NewGetOrders(uc).ServeHTTP,
-		Login:       NewLogin(uc).ServeHTTP,
-		PostOrders:  NewPostOrders(uc).ServeHTTP,
-		Register:    NewRegister(uc).ServeHTTP,
-		Withdraw:    NewWithdraw(uc).ServeHTTP,
-		Withdrawals: NewWithdrawals(uc).ServeHTTP,
+		Balance:     NewBalance(uc, log).ServeHTTP,
+		GetOrders:   NewGetOrders(uc, log).ServeHTTP,
+		Login:       NewLogin(uc, log).ServeHTTP,
+		PostOrders:  NewPostOrders(uc, log).ServeHTTP,
+		Register:    NewRegister(uc, log).ServeHTTP,
+		Withdraw:    NewWithdraw(uc, log).ServeHTTP,
+		Withdrawals: NewWithdrawals(uc, log).ServeHTTP,
 	}
 }

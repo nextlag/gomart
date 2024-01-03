@@ -1,12 +1,15 @@
 package controller
 
-import "net/http"
+import (
+	"log/slog"
+	"net/http"
+)
 
 type Login struct {
 	uc UseCase
 }
 
-func NewLogin(uc UseCase) *Login {
+func NewLogin(uc UseCase, log *slog.Logger) *Login {
 	return &Login{uc: uc}
 }
 
