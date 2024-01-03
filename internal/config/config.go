@@ -8,15 +8,15 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
-type Args struct {
+type HTTPServer struct {
 	Host        string     `json:"host" env:"RUN_ADDRESS" envDefault:":8080"`
-	DSN         string     `json:"dsn,omitempty" env:"DATABASE_URI" envDefault:"host=localhost port=5432 user=gomart password=skypass12345 database=gomart sslmode=disable"`
+	DSN         string     `json:"dsn,omitempty" env:"DATABASE_URI" envDefault:"postgres://postgres:Xer_0101@localhost/gophermart?sslmode=disable"`
 	Accrual     string     `json:"accrual" env:"ACCRUAL_SYSTEM_ADDRESS" envDefault:"http://localhost:8081"`
 	LogLevel    slog.Level `json:"log_level" env:"LOG_LEVEL"`
 	SecretToken string     `json:"secret_token" env:"SECRET_TOKEN" envDefault:"sky-go-mart"`
 }
 
-var Cfg Args
+var Cfg HTTPServer
 
 func MakeConfig() error {
 	flag.StringVar(&Cfg.Host, "a", Cfg.Host, "Host HTTP-server")

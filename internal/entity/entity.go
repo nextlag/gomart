@@ -19,9 +19,10 @@ type OWSB struct {
 
 // User отражает информацию о зарегистрированных пользователях
 type User struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Login     string  `json:"login"`
+	Password  string  `json:"password"`
+	Balance   float32 `json:"balance"`
+	Withdrawn float32 `json:"withdrawn"`
 }
 
 // Points struct designed to receive data from accrual system
