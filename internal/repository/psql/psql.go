@@ -29,18 +29,18 @@ const (
 )
 
 type Postgres struct {
-	db  *sql.DB
-	log *slog.Logger
+	DB  *sql.DB
+	Log *slog.Logger
 }
 
 // CreateTable - создает таблицу в базе данных
 func (s *Postgres) createTable(ctx context.Context) error {
-	_, err := s.db.ExecContext(ctx, usersTable)
+	_, err := s.DB.ExecContext(ctx, usersTable)
 	if err != nil {
 		return fmt.Errorf("exec create users table query: %w", err)
 	}
 
-	_, err = s.db.ExecContext(ctx, ordersTable)
+	_, err = s.DB.ExecContext(ctx, ordersTable)
 	if err != nil {
 		return fmt.Errorf("exec create orders table query: %w", err)
 	}
@@ -65,8 +65,8 @@ func New(cfg string, log *slog.Logger) (*Postgres, error) {
 	}
 
 	storage := &Postgres{
-		db:  db,
-		log: log,
+		DB:  db,
+		Log: log,
 	}
 
 	// Создание таблицы с использованием контекста
@@ -82,7 +82,7 @@ func New(cfg string, log *slog.Logger) (*Postgres, error) {
 
 // Close - закрывает соединение с базой данных
 func (s *Postgres) Close() {
-	err := s.db.Close()
+	err := s.DB.Close()
 	if err != nil {
 		return
 	}

@@ -58,7 +58,7 @@ func main() {
 	defer db.Close()
 
 	// Инициализация use case, который предоставляет бизнес-логику для обработки запросов.
-	uc := usecase.New(usecase.NewStorage(db))
+	uc := usecase.New(usecase.NewStorage(db, log))
 
 	// Создание нового маршрутизатора Chi для обработки HTTP-запросов.
 	handler := chi.NewRouter()
