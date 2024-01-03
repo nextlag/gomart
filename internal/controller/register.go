@@ -3,70 +3,79 @@ package controller
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
+	"github.com/lib/pq"
+
 	"github.com/nextlag/gomart/internal/mw/auth"
+	"github.com/nextlag/gomart/pkg/generatestring"
 )
 
-// HTTP коды состояния
-const (
-	StatusBadRequest          = http.StatusBadRequest
-	StatusInternalServerError = http.StatusInternalServerError
-	StatusOK                  = http.StatusOK
-)
-
-// ErrValidation представляет ошибку валидации данных.
-var ErrValidation = errors.New("validation error")
-
+// Register представляет собой контроллер для обработки регистрации пользователя.
 type Register struct {
-	uc  UseCase
+	uc  UseCase // UseCase для обработки бизнес-логики регистрации
 	log *slog.Logger
 }
 
-func NewRegister(uc UseCase) *Register {
-	return &Register{uc: uc}
+// NewRegister создает новый экземпляр контроллера Register.
+func NewRegister(uc UseCase, log *slog.Logger) *Register {
+	return &Register{uc: uc, log: log}
 }
 
+// ServeHTTP обрабатывает HTTP-запросы для регистрации пользователя.
 func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var userData Credentials
+	var user Credentials
+
+	// Декодируем JSON-данные из тела запроса в структуру Credentials
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&userData); err != nil {
-		sendError(w, StatusBadRequest, "Wrong request")
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&user); err != nil {
+		http.Error(w, "failed to decode json", http.StatusBadRequest)
 		return
 	}
 
-	if err := h.validateAndRegister(w, r, userData); err != nil {
-		sendError(w, StatusInternalServerError, "Internal server error")
+	// Проверяем обязательные поля
+	switch {
+	case len(user.Login) == 0:
+		h.log.Info("error: empty login")
+		http.Error(w, "wrong request", http.StatusBadRequest)
+		return
+	case len(user.Password) == 0:
+		h.log.Info("generating password")
+		user.Password = generatestring.NewRandomString(8)
+	}
+
+	h.log.Debug("autorization", "login", user.Login, "password", user.Password)
+
+	// Вызываем метод DoRegister UseCase для выполнения регистрации
+	if err := h.uc.DoRegister(r.Context(), user.Login, user.Password, r); err != nil {
+		// Обрабатываем ошибку регистрации
+		var pqErr *pq.Error
+		isPGError := errors.As(err, &pqErr)
+		switch {
+		case isPGError && pqErr.Code == "23505":
+			// Если дубликат логина - возвращаем конфликт
+			http.Error(w, "login is already taken", http.StatusConflict)
+		default:
+			// В противном случае возвращаем внутреннюю ошибку сервера
+			http.Error(w, "internal Server Error", http.StatusInternalServerError)
+		}
 		return
 	}
 
-	if err := auth.SetAuth(w, userData.Login, h.log); err != nil {
-		h.log.Error("Can't set cookie: ", err)
-		sendError(w, StatusInternalServerError, "Internal server error")
+	// Устанавливаем аутентификационную куку после успешной регистрации
+	jwt, err := auth.SetAuth(user.Login, h.log, w, r)
+	if err != nil {
+		h.log.Error("can't set cookie: ", "error controller|register", err.Error())
+		http.Error(w, "internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	h.log.Debug("authentication", "login", user.Login, "token", jwt)
 
-	w.WriteHeader(StatusOK)
-	w.Write([]byte("Successfully registered"))
-}
-
-func (h *Register) validateAndRegister(w http.ResponseWriter, r *http.Request, userData Credentials) error {
-	if userData.Login == "" || userData.Password == "" {
-		sendError(w, StatusBadRequest, "Wrong request")
-		return ErrValidation
-	}
-
-	if err := h.uc.DoRegister(r.Context(), userData.Login, userData.Password); err != nil {
-		sendError(w, StatusBadRequest, err.Error())
-		return err
-	}
-
-	return nil
-}
-
-func sendError(w http.ResponseWriter, statusCode int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	w.Write([]byte(`{"error": "` + message + `"}`))
+	// Возвращаем успешный статус и сообщение об успешной регистрации
+	w.WriteHeader(http.StatusOK)
+	cookie := fmt.Sprintf("Cookie: %s=%s\n", auth.Cookie, jwt)
+	w.Write([]byte(cookie))
 }

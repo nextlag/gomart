@@ -1,12 +1,15 @@
 package controller
 
-import "net/http"
+import (
+	"log/slog"
+	"net/http"
+)
 
 type PostOrders struct {
 	uc UseCase
 }
 
-func NewPostOrders(uc UseCase) *PostOrders {
+func NewPostOrders(uc UseCase, log *slog.Logger) *PostOrders {
 	return &PostOrders{uc: uc}
 }
 

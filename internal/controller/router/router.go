@@ -14,14 +14,15 @@ import (
 
 func SetupRouter(handler *chi.Mux, log *slog.Logger, useCase *usecase.UseCase) *chi.Mux {
 	handler.Use(middleware.RequestID)
-	handler.Use(auth.WithCookieLogin(log))
+	handler.Use(logger.New(log))
+	// handler.Use(auth.WithCookieLogin(log))
 
-	h := controller.New(useCase)
+	h := controller.New(useCase, log)
 
 	// Используем контроллер в качестве хендлера
-	handler.With(logger.New(log)).Route("/", func(r chi.Router) {
-		r.Post("/api/user/login", h.Login)
+	handler.Route("/", func(r chi.Router) {
 		r.Post("/api/user/register", h.Register)
+		r.With(auth.WithCookieLogin(log)).Post("/api/user/login", h.Login)
 		r.Post("/api/user/orders", h.PostOrders)
 		r.Post("/api/user/balance/withdraw", h.Withdraw)
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	stdLog "log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -28,7 +29,7 @@ func setupServer(router http.Handler) *http.Server {
 
 func main() {
 	if err := config.MakeConfig(); err != nil {
-		panic(err)
+		stdLog.Fatal(err)
 	}
 
 	var (
@@ -46,19 +47,19 @@ func main() {
 		slog.String("-a", cfg.Host),
 		slog.String("-d", cfg.DSN),
 		slog.String("-k", cfg.SecretToken),
-		slog.String("-r", cfg.Accrual),
 		slog.String("-l", cfg.LogLevel.String()),
+		slog.String("-r", cfg.Accrual),
 	)
 	// Repository
 	db, err := psql.New(cfg.DSN, log)
 	if err != nil {
-		log.Error("failed to connect in database", err.Error())
+		log.Error("failed to connect in database", "error main", err.Error())
 		os.Exit(1)
 	}
 	defer db.Close()
 
 	// Инициализация use case, который предоставляет бизнес-логику для обработки запросов.
-	uc := usecase.New(usecase.NewStorage(db))
+	uc := usecase.New(usecase.NewStorage(db, log))
 
 	// Создание нового маршрутизатора Chi для обработки HTTP-запросов.
 	handler := chi.NewRouter()
@@ -81,7 +82,7 @@ func main() {
 	go func() {
 		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			// Если сервер не стартовал, логируем ошибку
-			log.Error("failed to start server", slog.String("error", err.Error()))
+			log.Error("failed to start server", "error main", err.Error())
 			done <- os.Interrupt
 		}
 	}()

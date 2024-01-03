@@ -19,37 +19,42 @@ func GetAccrual(order entity.Order, cfg config.HTTPServer, log *slog.Logger) ent
 
 	startTime := time.Now()
 
-	for time.Since(startTime) < maxWaitTime {
-		select {
-		case <-time.After(waitInterval):
-			resp, err := client.R().
-				SetResult(&orderUpdate).
-				Get("/api/orders/" + order.Order)
+	for elapsed := time.Since(startTime); elapsed < maxWaitTime; elapsed = time.Since(startTime) {
+		resp, err := client.R().
+			SetResult(&orderUpdate).
+			Get("/api/orders/" + order.Order)
 
-			if err != nil {
-				log.Error("error when sending a GET request to the accrual system:", err)
-				continue
-			}
-
-			switch resp.StatusCode() {
-			case 429:
-				// Пауза 3 секунды при получении кода 429 (слишком много запросов)
-				continue
-			case 204:
-				// Пауза 1 секунда при получении кода 204 (успешный запрос, но нет данных)
-				continue
-			}
-
-			if resp.StatusCode() == 500 {
-				log.Error("internal server error in the accrual system:", err)
-				continue
-			}
-
-			if orderUpdate.Status == "INVALID" || orderUpdate.Status == "PROCESSED" {
-				break
-			}
+		if err != nil {
+			log.Error("error when sending a GET request to the accrual system:", "error usecase|accrual.go", err.Error())
+			time.Sleep(waitInterval)
+			continue
 		}
+
+		switch resp.StatusCode() {
+		case 429:
+			// Пауза 3 секунды при получении кода 429 (слишком много запросов)
+			time.Sleep(waitInterval)
+			continue
+		case 204:
+			// Пауза 1 секунда при получении кода 204 (успешный запрос, но нет данных)
+			time.Sleep(waitInterval)
+			continue
+		}
+
+		if resp.StatusCode() == 500 {
+			log.Error("internal server error in the accrual system:", "error usecase|accrual.go", err.Error())
+			time.Sleep(waitInterval)
+			continue
+		}
+
+		if orderUpdate.Status == "INVALID" || orderUpdate.Status == "PROCESSED" {
+			return orderUpdate
+		}
+
+		// Пауза перед следующей попыткой
+		time.Sleep(waitInterval)
 	}
+
 	return orderUpdate
 }
 

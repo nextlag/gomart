@@ -1,0 +1,38 @@
+### POST save
+POST http://localhost:8080/
+Host: localhost:8080
+Content-Type: text/plain
+
+https://google.com
+
+
+### POST register
+POST http://localhost:8080/api/user/register
+Host: localhost:8080
+Content-Type: application/json
+
+{
+  "login": "nextbug",
+  "password": "123df23"
+}
+
+### Get
+# @no-redirect
+GET http://localhost:8080/2qEhT1TF
+
+
+### POST apiSave
+POST http://localhost:8080/api/user/login
+Host: localhost:8080
+Content-Type: application/json
+Cookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.LUue-nOzj5c_K77ecItY_79bdQADQ303TdjYohC5B_g
+
+{
+  "login": "nextbug",
+  "password": "5uZY84aP"
+}
+
+### GET request with cookie passed through headers
+# @no-redirect
+GET http://localhost:8080/api/user/urls
+Cookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.LUue-nOzj5c_K77ecItY_79bdQADQ303TdjYohC5B_g

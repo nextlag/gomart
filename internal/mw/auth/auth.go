@@ -12,6 +12,10 @@ import (
 	"github.com/nextlag/gomart/internal/config"
 )
 
+const (
+	Cookie = "Auth"
+)
+
 // Claims представляет структуру пользовательских клеймов для JWT.
 type Claims struct {
 	jwt.RegisteredClaims
@@ -24,49 +28,49 @@ var errAuth = errors.New("вы не аутентифицированы")
 // buildJWTString генерирует токен JWT с предоставленным логином и подписывает его с использованием настроенного секретного ключа.
 func buildJWTString(login string, log *slog.Logger) (string, error) {
 	// Создает новый токен JWT с пользовательскими клеймами и подписывает его с использованием алгоритма HMAC SHA-256.
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
+	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{},
 		login:            login,
 	})
 
 	// Подписывает токен с использованием секретного ключа и получает строку токена.
-	tokenString, err := token.SignedString([]byte(config.Cfg.SecretToken))
+	tokenString, err := jwtToken.SignedString([]byte(config.Cfg.SecretToken))
 	if err != nil {
-		log.Error("Ошибка подписи токена: ", err)
+		log.Error("token signing error", "error auth", err.Error())
 		return "", err
 	}
 
 	return tokenString, nil
 }
 
-// SetAuth создает новую аутентификационную куку для предоставленного логина и устанавливает ее в HTTP-ответе.
-func SetAuth(res http.ResponseWriter, login string, log *slog.Logger) error {
+// SetAuth создает новую куку для предоставленного логина и устанавливает ее в HTTP-ответе.
+func SetAuth(login string, log *slog.Logger, w http.ResponseWriter, r *http.Request) (string, error) {
 	// Сгенерировать токен JWT для логина.
-	jwt, err := buildJWTString(login, log)
+	jwtToken, err := buildJWTString(login, log)
 	if err != nil {
-		log.Error("Ошибка создания куки: ", err)
-		return err
+		log.Error("cookie creation error", "error auth", err.Error())
+		return "", err
 	}
 
 	// Создает новую HTTP-куку с токеном JWT и устанавливает ее в ответе.
 	cookie := http.Cookie{
 		Name:  "Auth",
-		Value: jwt,
-		Path:  "/",
+		Value: jwtToken,
+		Path:  r.URL.Path,
 	}
-	http.SetCookie(res, &cookie)
+	http.SetCookie(w, &cookie)
 
-	return nil
+	return jwtToken, nil
 }
 
 // getLogin извлекает логин пользователя из предоставленного токена JWT.
 func getLogin(tokenString string, log *slog.Logger) (string, error) {
 	// Парсит токен JWT и извлекает клеймы.
 	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
+	jwtToken, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
 		// Проверяет метод подписи.
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			log.Error("Непредвиденный метод подписи", nil)
+			log.Error("unexpected signature method", nil)
 			return nil, nil
 		}
 		// Возвращает секретный ключ для валидации.
@@ -76,26 +80,26 @@ func getLogin(tokenString string, log *slog.Logger) (string, error) {
 		return "", err
 	}
 	// Проверяет, является ли токен действительным.
-	if !token.Valid {
-		log.Error("Токен не действителен", nil)
+	if !jwtToken.Valid {
+		log.Error("token invalid", "error auth", err.Error())
 		return "", err
 	}
 	return claims.login, nil
 }
 
-// GetCookie извлекает логин пользователя из куки "Auth" в предоставленном HTTP-запросе.
-func GetCookie(req *http.Request, log *slog.Logger) (string, error) {
+// GetCookie извлекает логин пользователя из кука "Auth".
+func GetCookie(log *slog.Logger, r *http.Request) (string, error) {
 	// Извлечь подписанную куку логина из запроса.
-	signedLogin, err := req.Cookie("Auth")
+	signedLogin, err := r.Cookie(Cookie)
 	if err != nil {
-		log.Error("Ошибка при получении куки", err)
+		log.Error("error receiving cookie", "error auth", err.Error())
 		return "", errAuth
 	}
 
 	// Извлекает логин из токена JWT в куке.
 	login, err := getLogin(signedLogin.Value, log)
 	if err != nil {
-		log.Error("Ошибка при чтении куки", err)
+		log.Error("error reading cookie", "error auth", err.Error())
 		return "", err
 	}
 

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
-
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 const (
@@ -29,20 +27,19 @@ const (
 )
 
 type Postgres struct {
-	db  *sql.DB
-	log *slog.Logger
+	DB *sql.DB
 }
 
 // CreateTable - создает таблицу в базе данных
 func (s *Postgres) createTable(ctx context.Context) error {
-	_, err := s.db.ExecContext(ctx, usersTable)
+	_, err := s.DB.ExecContext(ctx, usersTable)
 	if err != nil {
-		return fmt.Errorf("exec create users table query: %w", err)
+		return fmt.Errorf("exec create users table query: %w", err.Error())
 	}
 
-	_, err = s.db.ExecContext(ctx, ordersTable)
+	_, err = s.DB.ExecContext(ctx, ordersTable)
 	if err != nil {
-		return fmt.Errorf("exec create orders table query: %w", err)
+		return fmt.Errorf("exec create orders table query: %w", err.Error())
 	}
 
 	return nil
@@ -52,37 +49,36 @@ func New(cfg string, log *slog.Logger) (*Postgres, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), createTablesTimeout)
 	defer cancel()
 	// Создание подключения к базе данных с использованием контекста
-	db, err := sql.Open("pgx", cfg)
+	db, err := sql.Open("postgres", cfg)
 	if err != nil {
-		log.Error("error when opening a connection to the database", err)
-		return nil, fmt.Errorf("db connection error: %w", err)
+		log.Error("error when opening a connection to the database", "error psql", err.Error())
+		return nil, fmt.Errorf("db connection error: %w", err.Error())
 	}
 
 	// Проверка подключения к базе данных с использованием контекста
 	if err := db.PingContext(ctx); err != nil {
-		log.Error("error when checking database connection", err.Error())
-		return nil, fmt.Errorf("db ping error: %w", err)
+		log.Error("error when checking database connection", "error psql", err.Error())
+		return nil, fmt.Errorf("db ping error: %w", err.Error())
 	}
 
 	storage := &Postgres{
-		db:  db,
-		log: log,
+		DB: db,
 	}
 
 	// Создание таблицы с использованием контекста
 	if err := storage.createTable(ctx); err != nil {
-		log.Error("error when creating a table in the database", err.Error())
-		return nil, fmt.Errorf("create table error: %w", err)
+		log.Error("error when creating a table in the database", "error psql", err.Error())
+		return nil, fmt.Errorf("create table error: %w", err.Error())
 	}
 
-	log.Info("database connection successful", "psql.go", "func New()")
+	log.Info("database connection successful")
 
 	return storage, nil
 }
 
 // Close - закрывает соединение с базой данных
 func (s *Postgres) Close() {
-	err := s.db.Close()
+	err := s.DB.Close()
 	if err != nil {
 		return
 	}
