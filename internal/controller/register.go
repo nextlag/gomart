@@ -65,7 +65,7 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Устанавливаем аутентификационную куку после успешной регистрации
 	jwt, err := auth.SetAuth(w, user.Login, h.log)
 	if err != nil {
-		h.log.Error("can't set cookie: ", "error controller/register", err.Error())
+		h.log.Error("can't set cookie: ", "error controller|register", err.Error())
 		http.Error(w, "internal Server Error", http.StatusInternalServerError)
 		return
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	stdLog "log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -28,7 +29,7 @@ func setupServer(router http.Handler) *http.Server {
 
 func main() {
 	if err := config.MakeConfig(); err != nil {
-		panic(err)
+		stdLog.Fatal(err)
 	}
 
 	var (
@@ -46,8 +47,8 @@ func main() {
 		slog.String("-a", cfg.Host),
 		slog.String("-d", cfg.DSN),
 		slog.String("-k", cfg.SecretToken),
-		slog.String("-r", cfg.Accrual),
 		slog.String("-l", cfg.LogLevel.String()),
+		slog.String("-r", cfg.Accrual),
 	)
 	// Repository
 	db, err := psql.New(cfg.DSN, log)
