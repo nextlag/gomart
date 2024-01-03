@@ -5,12 +5,14 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 const (
-	usersTable = `CREATE TABLE IF NOT EXISTS users (
+	createTablesTimeout = time.Second * 5
+	usersTable          = `CREATE TABLE IF NOT EXISTS users (
 		login VARCHAR(255) PRIMARY KEY,
 		password VARCHAR(255),
 		balance FLOAT,
@@ -46,7 +48,9 @@ func (s *Postgres) createTable(ctx context.Context) error {
 	return nil
 }
 
-func New(ctx context.Context, cfg string, log *slog.Logger) (*Postgres, error) {
+func New(cfg string, log *slog.Logger) (*Postgres, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), createTablesTimeout)
+	defer cancel()
 	// Создание подключения к базе данных с использованием контекста
 	db, err := sql.Open("pgx", cfg)
 	if err != nil {
