@@ -8,6 +8,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/nextlag/gomart/internal/mw/auth"
+	"github.com/nextlag/gomart/pkg/generatestring"
 )
 
 // Register представляет собой контроллер для обработки регистрации пользователя.
@@ -29,15 +30,22 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&user); err != nil {
-		http.Error(w, "Wrong request", http.StatusBadRequest)
+		http.Error(w, "wrong request", http.StatusBadRequest)
 		return
 	}
 
 	// Проверяем обязательные поля
-	if user.Login == "" || user.Password == "" {
-		http.Error(w, "Wrong request", http.StatusBadRequest)
+	switch {
+	case len(user.Login) == 0:
+		h.log.Info("error: empty login")
+		http.Error(w, "wrong request", http.StatusBadRequest)
 		return
+	case len(user.Password) == 0:
+		h.log.Info("generating password")
+		user.Password = generatestring.NewRandomString(8)
 	}
+
+	h.log.Debug("autorization", "login", user.Login, "password", user.Password)
 
 	// Вызываем метод DoRegister UseCase для выполнения регистрации
 	if err := h.uc.DoRegister(r.Context(), user.Login, user.Password); err != nil {
@@ -45,11 +53,11 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		pqErr, isPGError := err.(*pq.Error)
 		switch {
 		case isPGError && pqErr.Code == "23505":
-			// Если ошибка уникального нарушения, возвращаем конфликт
-			http.Error(w, "Login is already taken", http.StatusConflict)
+			// Если дубликат логина - возвращаем конфликт
+			http.Error(w, "login is already taken", http.StatusConflict)
 		default:
 			// В противном случае возвращаем внутреннюю ошибку сервера
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			http.Error(w, "internal Server Error", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -57,13 +65,13 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Устанавливаем аутентификационную куку после успешной регистрации
 	jwt, err := auth.SetAuth(w, user.Login, h.log)
 	if err != nil {
-		h.log.Error("Can't set cookie: ", err.Error())
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		h.log.Error("can't set cookie: ", "error controller/register", err.Error())
+		http.Error(w, "internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	h.log.Debug("authentication", "login", user.Login, "token", jwt)
 
 	// Возвращаем успешный статус и сообщение об успешной регистрации
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Successfully registered"))
+	w.Write([]byte("successfully registered"))
 }

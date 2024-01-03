@@ -52,7 +52,7 @@ func main() {
 	// Repository
 	db, err := psql.New(cfg.DSN, log)
 	if err != nil {
-		log.Error("failed to connect in database", err.Error())
+		log.Error("failed to connect in database", "error main", err.Error())
 		os.Exit(1)
 	}
 	defer db.Close()
@@ -81,7 +81,7 @@ func main() {
 	go func() {
 		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			// Если сервер не стартовал, логируем ошибку
-			log.Error("failed to start server", slog.String("error", err.Error()))
+			log.Error("failed to start server", "error main", err.Error())
 			done <- os.Interrupt
 		}
 	}()

@@ -25,7 +25,7 @@ func GetAccrual(order entity.Order, cfg config.HTTPServer, log *slog.Logger) ent
 			Get("/api/orders/" + order.Order)
 
 		if err != nil {
-			log.Error("error when sending a GET request to the accrual system:", err)
+			log.Error("error when sending a GET request to the accrual system:", "error usecase/accrual", err.Error())
 			time.Sleep(waitInterval)
 			continue
 		}
@@ -42,7 +42,7 @@ func GetAccrual(order entity.Order, cfg config.HTTPServer, log *slog.Logger) ent
 		}
 
 		if resp.StatusCode() == 500 {
-			log.Error("internal server error in the accrual system:", err)
+			log.Error("internal server error in the accrual system:", "error usecase/accrual", err.Error())
 			time.Sleep(waitInterval)
 			continue
 		}

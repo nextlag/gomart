@@ -32,7 +32,7 @@ func (s *Storage) Register(ctx context.Context, login string, password string) e
 		Exec(ctx)
 
 	if err != nil {
-		s.Error("Error writing data: ", err.Error())
+		s.Error("error writing data: ", "error usecase/repository", err.Error())
 		return err
 	}
 

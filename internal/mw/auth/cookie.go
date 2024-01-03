@@ -25,7 +25,7 @@ func WithCookieLogin(log *slog.Logger) func(next http.Handler) http.Handler {
 				return
 			} else if err != nil {
 				// Если произошла внутренняя ошибка при чтении файла cookie, вернуть код состояния 500.
-				log.Error("Ошибка чтения файла cookie", err.Error())
+				log.Error("Ошибка чтения файла cookie", "error auth/cookie", err.Error())
 				http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
 				return
 			}

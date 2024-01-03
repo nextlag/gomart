@@ -28,7 +28,7 @@ func NewEntity(uc UseCase) *entity.Entity {
 func (uc *UseCase) DoRegister(ctx context.Context, login, password string) error {
 	err := uc.r.Register(ctx, login, password)
 	if err != nil {
-		return fmt.Errorf("failed to get balance: %w", err)
+		return fmt.Errorf("failed to push registration data %w", err.Error())
 	}
 	return nil
 }
