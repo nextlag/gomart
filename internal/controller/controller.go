@@ -9,6 +9,12 @@ type UseCase interface {
 	DoRegister(ctx context.Context, login, password string) error
 }
 
+// A struct used to get and store data from a json requests.
+type Credentials struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
+
 type Handlers struct {
 	Balance     http.HandlerFunc
 	GetOrders   http.HandlerFunc
