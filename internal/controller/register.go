@@ -34,19 +34,18 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.uc.DoRegister(r.Context(), userData.Login, userData.Password)
-	if err != nil {
+	if err := h.uc.DoRegister(r.Context(), userData.Login, userData.Password); err != nil {
 		pqErr, isPGError := err.(*pq.Error)
-		if isPGError && pqErr.Code == "23505" {
+		switch {
+		case isPGError && pqErr.Code == "23505":
 			http.Error(w, "Login is already taken", http.StatusConflict)
-		} else {
+		default:
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 		return
 	}
 
-	err = auth.SetAuth(w, userData.Login, h.log)
-	if err != nil {
+	if err := auth.SetAuth(w, userData.Login, h.log); err != nil {
 		h.log.Error("Can't set cookie: ", err.Error())
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
