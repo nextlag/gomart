@@ -1,5 +1,4 @@
-// Пакет auth предоставляет функциональность аутентификации пользователя с использованием JSON Web Tokens (JWT) и файлов cookie.
-
+// Package auth - предоставляет функциональность аутентификации пользователя с использованием JSON Web Tokens (JWT) и файлов cookie.
 package auth
 
 import (
@@ -81,7 +80,7 @@ func getLogin(tokenString string, log *slog.Logger) (string, error) {
 	}
 	// Проверяет, является ли токен действительным.
 	if !jwtToken.Valid {
-		log.Error("token invalid", "error auth", err.Error())
+		log.Error("token invalid", "error auth", nil)
 		return "", err
 	}
 	return claims.login, nil
@@ -92,7 +91,7 @@ func GetCookie(log *slog.Logger, r *http.Request) (string, error) {
 	// Извлечь подписанную куку логина из запроса.
 	signedLogin, err := r.Cookie(Cookie)
 	if err != nil {
-		log.Error("error receiving cookie", "error auth", err.Error())
+		log.Error("error receiving cookie", "error auth", nil)
 		return "", errAuth
 	}
 

@@ -34,12 +34,12 @@ type Postgres struct {
 func (s *Postgres) createTable(ctx context.Context) error {
 	_, err := s.DB.ExecContext(ctx, usersTable)
 	if err != nil {
-		return fmt.Errorf("exec create users table query: %w", err.Error())
+		return fmt.Errorf("exec create users table query: %v", err.Error())
 	}
 
 	_, err = s.DB.ExecContext(ctx, ordersTable)
 	if err != nil {
-		return fmt.Errorf("exec create orders table query: %w", err.Error())
+		return fmt.Errorf("exec create orders table query: %v", err.Error())
 	}
 
 	return nil
@@ -52,13 +52,13 @@ func New(cfg string, log *slog.Logger) (*Postgres, error) {
 	db, err := sql.Open("postgres", cfg)
 	if err != nil {
 		log.Error("error when opening a connection to the database", "error psql", err.Error())
-		return nil, fmt.Errorf("db connection error: %w", err.Error())
+		return nil, fmt.Errorf("db connection error: %v", err.Error())
 	}
 
 	// Проверка подключения к базе данных с использованием контекста
 	if err := db.PingContext(ctx); err != nil {
 		log.Error("error when checking database connection", "error psql", err.Error())
-		return nil, fmt.Errorf("db ping error: %w", err.Error())
+		return nil, fmt.Errorf("db ping error: %v", err.Error())
 	}
 
 	storage := &Postgres{
@@ -68,7 +68,7 @@ func New(cfg string, log *slog.Logger) (*Postgres, error) {
 	// Создание таблицы с использованием контекста
 	if err := storage.createTable(ctx); err != nil {
 		log.Error("error when creating a table in the database", "error psql", err.Error())
-		return nil, fmt.Errorf("create table error: %w", err.Error())
+		return nil, fmt.Errorf("create table error: %v", err.Error())
 	}
 
 	log.Info("database connection successful")
