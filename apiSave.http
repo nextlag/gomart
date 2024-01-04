@@ -12,7 +12,7 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
-  "login": "nextbug",
+  "login": "nextb",
   "password": "123df23"
 }
 
@@ -21,7 +21,7 @@ Content-Type: application/json
 GET http://localhost:8080/2qEhT1TF
 
 
-### POST apiSave
+### POST authentication
 POST http://localhost:8080/api/user/login
 Host: localhost:8080
 Content-Type: application/json
@@ -30,6 +30,16 @@ Cookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.LUue-nOzj5c_K77ecItY_79bdQ
 {
   "login": "nextbug",
   "password": "5uZY84aP"
+}
+
+### POST authentication
+POST http://localhost:8080/api/user/login
+Host: localhost:8080
+Content-Type: application/json
+
+{
+  "login": "FESS",
+  "password": "840VzUgo"
 }
 
 ### GET request with cookie passed through headers

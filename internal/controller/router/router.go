@@ -15,7 +15,6 @@ import (
 func SetupRouter(handler *chi.Mux, log *slog.Logger, useCase *usecase.UseCase) *chi.Mux {
 	handler.Use(middleware.RequestID)
 	handler.Use(logger.New(log))
-	// handler.Use(auth.WithCookieLogin(log))
 
 	h := controller.New(useCase, log)
 

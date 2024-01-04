@@ -18,7 +18,7 @@ const (
 // Claims представляет структуру пользовательских клеймов для JWT.
 type Claims struct {
 	jwt.RegisteredClaims
-	login string
+	Login string `json:"login"`
 }
 
 // errAuth - ошибка, указывающая, что пользователь не аутентифицирован.
@@ -29,7 +29,7 @@ func buildJWTString(login string, log *slog.Logger) (string, error) {
 	// Создает новый токен JWT с пользовательскими клеймами и подписывает его с использованием алгоритма HMAC SHA-256.
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{},
-		login:            login,
+		Login:            login,
 	})
 
 	// Подписывает токен с использованием секретного ключа и получает строку токена.
@@ -83,7 +83,7 @@ func getLogin(tokenString string, log *slog.Logger) (string, error) {
 		log.Error("token invalid", "error auth", nil)
 		return "", err
 	}
-	return claims.login, nil
+	return claims.Login, nil
 }
 
 // GetCookie извлекает логин пользователя из кука "Auth".
