@@ -12,27 +12,29 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
-  "login": "nextbug",
-  "password": "123df23"
+  "login": "user",
+  "password": "123"
 }
 
 ### Get
 # @no-redirect
-GET http://localhost:8080/2qEhT1TF
+GET http://localhost:8080/
 
 
-### POST apiSave
+### POST authentication
 POST http://localhost:8080/api/user/login
 Host: localhost:8080
 Content-Type: application/json
-Cookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.LUue-nOzj5c_K77ecItY_79bdQADQ303TdjYohC5B_g
+Cookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InVzZXIifQ.7ChccM-lJ5ApcXu7pX5iAE74tSn2um0lAgrCp5hkjbk
 
 {
-  "login": "nextbug",
-  "password": "5uZY84aP"
+  "login": "user",
+  "password": "123"
 }
 
-### GET request with cookie passed through headers
-# @no-redirect
-GET http://localhost:8080/api/user/urls
-Cookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.LUue-nOzj5c_K77ecItY_79bdQADQ303TdjYohC5B_g
+### POST request with cookie passed through headers and data in the body
+POST http://localhost:8080/api/user/orders
+Host: localhost:8080
+Content-Type: text/plain
+
+12345678902

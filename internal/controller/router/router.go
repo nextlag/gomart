@@ -15,20 +15,25 @@ import (
 func SetupRouter(handler *chi.Mux, log *slog.Logger, useCase *usecase.UseCase) *chi.Mux {
 	handler.Use(middleware.RequestID)
 	handler.Use(logger.New(log))
-	// handler.Use(auth.WithCookieLogin(log))
 
 	h := controller.New(useCase, log)
 
-	// Используем контроллер в качестве хендлера
-	handler.Route("/", func(r chi.Router) {
+	// Общая группа для роутов, где требуется аутентификация
+	handler.Group(func(r chi.Router) {
 		r.Post("/api/user/register", h.Register)
-		r.With(auth.WithCookieLogin(log)).Post("/api/user/login", h.Login)
-		r.Post("/api/user/orders", h.PostOrders)
-		r.Post("/api/user/balance/withdraw", h.Withdraw)
+		r.Post("/api/user/login", h.Login)
 
-		r.Get("/api/user/balance", h.Balance)
-		r.Get("/api/user/orders", h.GetOrders)
-		r.Get("/api/user/withdrawals", h.Withdrawals)
+		// Группа с применением CookieAuthentication ко всем роутам внутри
+		r.With(auth.CookieAuthentication(log)).Group(func(r chi.Router) {
+			r.Post("/api/user/orders", h.PostOrders)
+			r.Post("/api/user/balance/withdraw", h.Withdraw)
+			r.Get("/api/user/balance", h.Balance)
+			r.Get("/api/user/orders", h.GetOrders)
+		})
 	})
+
+	// Роут без аутентификации
+	handler.Get("/api/user/withdrawals", h.Withdrawals)
+
 	return handler
 }

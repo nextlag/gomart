@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -25,19 +26,21 @@ func (h *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to decode json", http.StatusBadRequest)
 		return
 	}
-	if err := h.uc.DoRegister(r.Context(), user.Login, user.Password, r); err != nil {
+	if err := h.uc.DoAuth(r.Context(), user.Login, user.Password, r); err != nil {
 		http.Error(w, "incorrect login or password", http.StatusUnauthorized)
 		return
 	}
 
-	_, err := auth.SetAuth(user.Login, h.log, w, r)
+	jwtToken, err := auth.SetAuth(user.Login, h.log, w, r)
 	if err != nil {
-		h.log.Error("can't set cookie", "error controller|register", err.Error())
+		h.log.Error("can't set cookie", "error Login handler", err.Error())
 		http.Error(w, "can't set cookie", http.StatusInternalServerError)
 		return
 	}
+	l := fmt.Sprintf("[%s] success authenticated", user.Login)
+	h.log.Info(l, "token", jwtToken)
 
 	// Возвращаем успешный статус и сообщение об успешной регистрации
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("you have successfully logged in"))
+	w.Write([]byte(l))
 }

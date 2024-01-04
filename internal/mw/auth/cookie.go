@@ -13,30 +13,34 @@ type authContextKey string
 // LoginKey - ключ для контекста с логином пользователя
 const LoginKey authContextKey = "login"
 
-// WithCookieLogin - проверка аутентификации пользователя с использованием файлов cookie.
-func WithCookieLogin(log *slog.Logger) func(next http.Handler) http.Handler {
+// CookieAuthentication - проверяет, авторизован ли пользователь с использованием cookie.
+// Если URL-путь не "/api/user/register" или не "/api/user/login" и у пользователя есть действительная кука авторизации,
+// она обслуживает запросы и вставляет логин в контекст.
+// В противном случае она не позволяет продолжить выполнение и возвращает статус кода 401 (если пользователь не аутентифицирован),
+// или 500 (если произошла внутренняя ошибка сервера).
+func CookieAuthentication(log *slog.Logger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Извлекает логин пользователя из файла cookie.
-			userLogin, err := GetCookie(log, r)
-			if errors.Is(err, errAuth) {
-				// Если пользователь не аутентифицирован, вернуть 40Ω
-				log.Error("error receiving cookie", "error auth|cookie.go", err.Error())
-				http.Error(w, "you are not authenticated", http.StatusUnauthorized)
-				return
-			} else if err != nil {
-				// Если произошла ошибка при чтении файла cookie, вернуть 500.
-				log.Error("error reading cookie", "error auth|cookie.go", err.Error())
-				http.Error(w, "error reading cookie", http.StatusInternalServerError)
-				return
+			login, err := GetCookie(log, r)
+
+			switch {
+			case errors.Is(err, errToken):
+				http.Error(w, "invalid token signature", http.StatusUnauthorized)
+			case errors.Is(err, errAuth):
+				log.Error("error empty login", "error CookieAuthentication", err.Error())
+				http.Error(w, "authentication error login not specified", http.StatusUnauthorized)
+			case err != nil:
+				log.Error("error getting cookie", "error CookieAuthentication", err.Error())
+				http.Error(w, "authentication error", http.StatusUnauthorized)
+			default:
+				// Создаем новый контекст с установленным логином
+				ctx := context.WithValue(r.Context(), LoginKey, login)
+				// Обновляем запрос с новым контекстом
+				r = r.WithContext(ctx)
+				log.Debug("CookieAuthentication", "context", ctx.Value(LoginKey), "login", login)
+
+				next.ServeHTTP(w, r)
 			}
-
-			// Добавляет логин в контекст запроса.
-			ctx := context.WithValue(r.Context(), LoginKey, userLogin)
-			r = r.WithContext(ctx)
-
-			// Передает управление следующему обработчику в цепочке.
-			next.ServeHTTP(w, r)
 		})
 	}
 }

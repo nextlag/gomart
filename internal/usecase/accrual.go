@@ -42,7 +42,7 @@ func GetAccrual(order entity.Order, cfg config.HTTPServer, log *slog.Logger) ent
 		}
 
 		if resp.StatusCode() == 500 {
-			log.Error("internal server error in the accrual system:", "error usecase|accrual.go", err.Error())
+			log.Error("internal server error in the accrual system:", nil)
 			time.Sleep(waitInterval)
 			continue
 		}

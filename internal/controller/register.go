@@ -57,7 +57,7 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case isPGError && pqErr.Code == "23505":
 			// Если дубликат логина - возвращаем конфликт
-			http.Error(w, "login is already taken", http.StatusConflict)
+			http.Error(w, "login is already token", http.StatusConflict)
 		default:
 			// В противном случае возвращаем внутреннюю ошибку сервера
 			http.Error(w, "internal Server Error", http.StatusInternalServerError)
