@@ -7,7 +7,7 @@ import (
 )
 
 type UseCase interface {
-	DoRegister(ctx context.Context, login, password string) error
+	DoRegister(ctx context.Context, login, password string, r *http.Request) error
 }
 
 // A struct used to get and store data from a json requests.

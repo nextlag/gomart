@@ -21,18 +21,35 @@ func NewStorage(db *psql.Postgres, log *slog.Logger) *Storage {
 }
 
 func (s *Storage) Register(ctx context.Context, login string, password string) error {
-	credentials := &entity.User{
+	user := &entity.User{
 		Login:    login,
 		Password: password,
 	}
 	db := bun.NewDB(s.Postgres.DB, pgdialect.New())
 
 	_, err := db.NewInsert().
-		Model(credentials).
+		Model(user).
 		Exec(ctx)
 
 	if err != nil {
 		s.Error("error writing data: ", "error usecase|repository.go", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (s *Storage) Auth(ctx context.Context, login, password string) error {
+	var user entity.User
+
+	db := bun.NewDB(s.Postgres.DB, pgdialect.New())
+
+	err := db.NewSelect().
+		Model(&user).
+		Where("login = ? and password = ?", login, password).
+		Scan(ctx)
+
+	if err != nil {
 		return err
 	}
 

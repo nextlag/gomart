@@ -2,6 +2,8 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -30,7 +32,7 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&user); err != nil {
-		http.Error(w, "wrong request", http.StatusBadRequest)
+		http.Error(w, "failed to decode json", http.StatusBadRequest)
 		return
 	}
 
@@ -48,9 +50,10 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.log.Debug("autorization", "login", user.Login, "password", user.Password)
 
 	// Вызываем метод DoRegister UseCase для выполнения регистрации
-	if err := h.uc.DoRegister(r.Context(), user.Login, user.Password); err != nil {
+	if err := h.uc.DoRegister(r.Context(), user.Login, user.Password, r); err != nil {
 		// Обрабатываем ошибку регистрации
-		pqErr, isPGError := err.(*pq.Error)
+		var pqErr *pq.Error
+		isPGError := errors.As(err, &pqErr)
 		switch {
 		case isPGError && pqErr.Code == "23505":
 			// Если дубликат логина - возвращаем конфликт
@@ -63,7 +66,7 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Устанавливаем аутентификационную куку после успешной регистрации
-	jwt, err := auth.SetAuth(w, user.Login, h.log)
+	jwt, err := auth.SetAuth(user.Login, h.log, w, r)
 	if err != nil {
 		h.log.Error("can't set cookie: ", "error controller|register", err.Error())
 		http.Error(w, "internal Server Error", http.StatusInternalServerError)
@@ -73,5 +76,6 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Возвращаем успешный статус и сообщение об успешной регистрации
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("successfully registered"))
+	cookie := fmt.Sprintf("Cookie: %s=%s\n", auth.Cookie, jwt)
+	w.Write([]byte(cookie))
 }
