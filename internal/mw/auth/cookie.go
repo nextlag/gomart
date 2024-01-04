@@ -18,7 +18,7 @@ func WithCookieLogin(log *slog.Logger) func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			login, err := GetCookie(log, r)
 			if errors.Is(err, errAuth) {
-				log.Error("Error getting cookie", err)
+				log.Error("Error getting cookie", err.Error())
 				http.Error(w, "You are not authenticated", http.StatusUnauthorized)
 				return
 			} else if err != nil {

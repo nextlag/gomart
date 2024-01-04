@@ -55,8 +55,7 @@ func SetAuth(login string, log *slog.Logger, w http.ResponseWriter, r *http.Requ
 	cookie := http.Cookie{
 		Name:  "Auth",
 		Value: jwtToken,
-		Path:  "/",
-		// Path:  r.URL.Path,
+		Path:  r.URL.Path,
 	}
 	http.SetCookie(w, &cookie)
 
