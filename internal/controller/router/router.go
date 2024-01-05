@@ -7,7 +7,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/nextlag/gomart/internal/controller"
-	"github.com/nextlag/gomart/internal/mw/auth"
 	"github.com/nextlag/gomart/internal/mw/logger"
 	"github.com/nextlag/gomart/internal/usecase"
 )
@@ -21,7 +20,7 @@ func SetupRouter(handler *chi.Mux, log *slog.Logger, useCase *usecase.UseCase) *
 	// Используем контроллер в качестве хендлера
 	handler.Route("/", func(r chi.Router) {
 		r.Post("/api/user/register", h.Register)
-		r.With(auth.WithCookieLogin(log)).Post("/api/user/login", h.Login)
+		r.Post("/api/user/login", h.Login)
 		r.Post("/api/user/orders", h.PostOrders)
 		r.Post("/api/user/balance/withdraw", h.Withdraw)
 

@@ -38,8 +38,8 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
-  "login": "FESS",
-  "password": "840VzUgo"
+  "login": "user1",
+  "password": "12345"
 }
 
 ### GET request with cookie passed through headers

@@ -13,6 +13,11 @@ type authContextKey string
 // LoginKey - ключ для контекста с логином пользователя
 const LoginKey authContextKey = "login"
 
+// Middleware-функция проверки, авторизован ли пользователь с использованием cookie.
+// Если URL-путь не "/api/user/register" или "/api/user/login" и у пользователя есть действительная кука авторизации,
+// она обслуживает запросы по протоколу HTTPS и вставляет логин в контекст.
+// В противном случае она не позволяет продолжить выполнение и возвращает статус кода 401, если пользователь не аутентифицирован,
+// или 500, если произошла внутренняя ошибка сервера.
 func WithCookieLogin(log *slog.Logger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
