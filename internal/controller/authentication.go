@@ -26,7 +26,7 @@ func (h *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to decode json", http.StatusBadRequest)
 		return
 	}
-	if err := h.uc.DoRegister(r.Context(), user.Login, user.Password, r); err != nil {
+	if err := h.uc.DoAuth(r.Context(), user.Login, user.Password, r); err != nil {
 		http.Error(w, "incorrect login or password", http.StatusUnauthorized)
 		return
 	}

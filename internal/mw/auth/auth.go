@@ -31,11 +31,12 @@ func buildJWTString(login string, log *slog.Logger) (string, error) {
 		RegisteredClaims: jwt.RegisteredClaims{},
 		Login:            login,
 	})
+	log.Debug("buildJWTString", "config.Cfg.SecretToken", config.Cfg.SecretToken)
 
 	// Подписывает токен с использованием секретного ключа и получает строку токена.
 	tokenString, err := jwtToken.SignedString([]byte(config.Cfg.SecretToken))
 	if err != nil {
-		log.Error("token signing error", "error auth", err.Error())
+		log.Error("token signing error", "error buildJWTString", err.Error())
 		return "", err
 	}
 
@@ -47,17 +48,18 @@ func SetAuth(login string, log *slog.Logger, w http.ResponseWriter, r *http.Requ
 	// Сгенерировать токен JWT для логина.
 	jwtToken, err := buildJWTString(login, log)
 	if err != nil {
-		log.Error("cookie creation error", "error auth", err.Error())
+		log.Error("cookie creation error", "package", "auth", "file", "auth.go", "error", err.Error())
 		return "", err
 	}
 
 	// Создает новую HTTP-куку с токеном JWT и устанавливает ее в ответе.
 	cookie := http.Cookie{
-		Name:  "Auth",
+		Name:  Cookie,
 		Value: jwtToken,
 		Path:  r.URL.Path,
 	}
 	http.SetCookie(w, &cookie)
+	log.Debug("SetAuth", "received token", jwtToken)
 
 	return jwtToken, nil
 }
@@ -65,6 +67,8 @@ func SetAuth(login string, log *slog.Logger, w http.ResponseWriter, r *http.Requ
 // getLogin извлекает логин пользователя из предоставленного токена JWT.
 // A function used to get a user's login using a JWT. It accepts a JWT and returns a login and error.
 func getLogin(tokenString string, log *slog.Logger) (string, error) {
+	log.Debug("getLogin", "received token", tokenString)
+
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -74,28 +78,33 @@ func getLogin(tokenString string, log *slog.Logger) (string, error) {
 		return []byte(config.Cfg.SecretToken), nil
 	})
 	if err != nil {
+		log.Error("error parsing token", "error", err.Error())
 		return "", err
 	}
 	if !token.Valid {
 		log.Error("Token is not valid", nil)
 		return "", err
 	}
+	log.Debug("getLogin", "login", claims.Login)
 	return claims.Login, nil
 }
 
 // GetCookie извлекает логин пользователя из кука "Auth".
 func GetCookie(log *slog.Logger, r *http.Request) (string, error) {
-	signedLogin, err := r.Cookie("Auth")
+	// Извлечь подписанную куку логина из запроса.
+	signedLogin, err := r.Cookie(Cookie)
 	if err != nil {
-		log.Error("Error getting cookie", "error", err.Error())
+		log.Error("error receiving cookie", "error GetCookie", nil)
 		return "", errAuth
 	}
 
+	// Извлекает логин из токена JWT в куке.
 	login, err := getLogin(signedLogin.Value, log)
 	if err != nil {
-		log.Error("Error reading cookie", "error", err.Error())
+		log.Error("error reading cookie", "error GetCookie", err.Error())
 		return "", err
 	}
+	log.Debug("GetCookie", "login", login)
 
 	return login, nil
 }

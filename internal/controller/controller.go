@@ -8,6 +8,8 @@ import (
 
 type UseCase interface {
 	DoRegister(ctx context.Context, login, password string, r *http.Request) error
+	DoAuth(ctx context.Context, login, password string, r *http.Request) error
+	DoInsertOrder(ctx context.Context, login string, order string) error
 }
 
 // A struct used to get and store data from a json requests.
