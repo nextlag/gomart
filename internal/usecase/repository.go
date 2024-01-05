@@ -77,20 +77,18 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 		Model(&checkOrder).
 		Where(`"order" = ?`, order).
 		Scan(ctx)
-	if err != nil {
-		_, err := db.NewInsert().
-			Model(userOrder).
-			Exec(ctx)
-		if err != nil {
-			s.Error("Error writing data: ", "error InsertOrder", err.Error())
-			return err
-		}
-
-	}
-	if checkOrder.Login != login && checkOrder.Order == order {
+	if err == nil {
+		// Order exists, return an error
 		return ErrAlreadyLoadedOrder
-	} else if checkOrder.Login == login && checkOrder.Order == order {
-		return ErrYouAlreadyLoadedOrder
+	}
+
+	// Order does not exist, insert it
+	_, err = db.NewInsert().
+		Model(userOrder).
+		Exec(ctx)
+	if err != nil {
+		s.Error("Error writing data: ", "error InsertOrder", err.Error())
+		return err
 	}
 
 	return nil
