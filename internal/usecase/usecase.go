@@ -8,37 +8,46 @@ import (
 )
 
 type Repository interface {
-	// Register - регистрация нового пользователя
+	// Register - регистрация пользователя
 	Register(ctx context.Context, login, password string) error
-	// Auth — проверяет, есть ли совпадение в базе по логину и паролю.
+	// Auth — аутентификация пользователя.
 	Auth(ctx context.Context, login, password string) error
-	// InsertOrder - используется для вставки информации о заказе в базу данных.
+	// InsertOrder - загрузка номера заказа.
 	InsertOrder(ctx context.Context, login string, order string) error
+	// GetOrders - получение списка загруженных номеров заказов
+	GetOrders(ctx context.Context, login string) ([]UseCase, error)
 }
 
 type UseCase struct {
-	r Repository // interface Repository
-	e *entity.Entity
+	r  Repository // interface Repository
+	e  *entity.AllEntity
+	er *ErrStatus
 }
 
 func New(r Repository) *UseCase {
-	e := &entity.Entity{}
-	return &UseCase{r, e}
+	e := &entity.AllEntity{}
+	er := &ErrStatus{}
+	return &UseCase{r, e, er}
 }
 
-// func NewEntity(uc UseCase) *entity.Entity {
-// 	return uc.e
-// }
+func (uc *UseCase) GetEntity() *entity.AllEntity {
+	return uc.e
+}
 
-func (uc *UseCase) DoRegister(ctx context.Context, login, password string, r *http.Request) error {
+func (uc *UseCase) DoRegister(ctx context.Context, login, password string, _ *http.Request) error {
 	err := uc.r.Register(ctx, login, password)
 	return err
 }
-func (uc *UseCase) DoAuth(ctx context.Context, login, password string, r *http.Request) error {
+func (uc *UseCase) DoAuth(ctx context.Context, login, password string, _ *http.Request) error {
 	err := uc.r.Auth(ctx, login, password)
 	return err
 }
 func (uc *UseCase) DoInsertOrder(ctx context.Context, login string, order string) error {
 	err := uc.r.InsertOrder(ctx, login, order)
 	return err
+}
+
+func (uc *UseCase) DoGetOrders(ctx context.Context, login string) ([]UseCase, error) {
+	orders, err := uc.r.GetOrders(ctx, login)
+	return orders, err
 }

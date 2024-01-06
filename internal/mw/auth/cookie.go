@@ -5,6 +5,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+
+	"github.com/nextlag/gomart/internal/usecase"
 )
 
 // authContextKey - тип для ключа контекста аутентификации
@@ -18,20 +20,20 @@ const LoginKey authContextKey = "login"
 // она обслуживает запросы и вставляет логин в контекст.
 // В противном случае она не позволяет продолжить выполнение и возвращает статус кода 401 (если пользователь не аутентифицирован),
 // или 500 (если произошла внутренняя ошибка сервера).
-func CookieAuthentication(log *slog.Logger) func(next http.Handler) http.Handler {
+func CookieAuthentication(uc *usecase.UseCase, log *slog.Logger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			login, err := GetCookie(log, r)
+			login, err := GetCookie(uc, log, r)
 
 			switch {
-			case errors.Is(err, errToken):
-				http.Error(w, "invalid token signature", http.StatusUnauthorized)
-			case errors.Is(err, errAuth):
+			case errors.Is(err, uc.Status().Token):
+				http.Error(w, uc.Status().Token.Error(), http.StatusUnauthorized)
+			case errors.Is(err, uc.Status().Auth):
 				log.Error("error empty login", "error CookieAuthentication", err.Error())
-				http.Error(w, "authentication error login not specified", http.StatusUnauthorized)
+				http.Error(w, uc.Status().Auth.Error(), http.StatusUnauthorized)
 			case err != nil:
 				log.Error("error getting cookie", "error CookieAuthentication", err.Error())
-				http.Error(w, "authentication error", http.StatusUnauthorized)
+				http.Error(w, uc.Status().InternalServer.Error(), http.StatusUnauthorized)
 			default:
 				// Создаем новый контекст с установленным логином
 				ctx := context.WithValue(r.Context(), LoginKey, login)

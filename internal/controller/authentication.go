@@ -7,34 +7,39 @@ import (
 	"net/http"
 
 	"github.com/nextlag/gomart/internal/mw/auth"
+	"github.com/nextlag/gomart/internal/usecase"
 )
 
 type Login struct {
-	uc  UseCase
+	uc  *usecase.UseCase
 	log *slog.Logger
 }
 
-func NewLogin(uc UseCase, log *slog.Logger) *Login {
+func NewLogin(uc *usecase.UseCase, log *slog.Logger) *Login {
 	return &Login{uc: uc, log: log}
 }
 
 func (h *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var user Credentials
+	user := h.uc.GetEntity().User
+	er := h.uc.Status()
+
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&user); err != nil {
-		http.Error(w, "failed to decode json", http.StatusBadRequest)
+		h.log.Error("decode JSON", "error Login handler", err.Error())
+		http.Error(w, er.DecodeJSON.Error(), http.StatusBadRequest)
 		return
 	}
 	if err := h.uc.DoAuth(r.Context(), user.Login, user.Password, r); err != nil {
-		http.Error(w, "incorrect login or password", http.StatusUnauthorized)
+		h.log.Error("incorrect login or password", "error Login handler", err.Error())
+		http.Error(w, er.Unauthorized.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	jwtToken, err := auth.SetAuth(user.Login, h.log, w, r)
 	if err != nil {
 		h.log.Error("can't set cookie", "error Login handler", err.Error())
-		http.Error(w, "can't set cookie", http.StatusInternalServerError)
+		http.Error(w, er.NoCookie.Error(), http.StatusInternalServerError)
 		return
 	}
 	l := fmt.Sprintf("[%s] success authenticated", user.Login)

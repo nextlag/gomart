@@ -47,9 +47,9 @@ func New(log *slog.Logger) func(next http.Handler) http.Handler {
 			defer func() {
 				// После выполнения запроса, логируем информацию о запросе, включая статус ответа, количество байтов и продолжительность.
 				requestFields.Status = ww.Status()
-				requestFields.Compress = ww.Header().Get("Content-Encoding")
 				requestFields.Bytes = ww.BytesWritten()
 				requestFields.Duration = time.Since(t1).String()
+				requestFields.Compress = ww.Header().Get("Content-Encoding")
 
 				// Добавляем логирование, только если статус запроса - ошибка
 				if requestFields.Status >= http.StatusInternalServerError {
@@ -66,6 +66,7 @@ func New(log *slog.Logger) func(next http.Handler) http.Handler {
 	}
 }
 
+// SetupLogger - инициализация middleware для логирования HTTP-запросов
 func SetupLogger() *slog.Logger {
 	opts := slogpretty.PrettyHandlerOptions{
 		SlogOpts: &slog.HandlerOptions{

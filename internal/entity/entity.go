@@ -1,13 +1,17 @@
 package entity
 
+type Entity interface {
+	GetEntity() *AllEntity
+}
+
 // Order - Структура, предназначенная для вставки данных в таблицу заказов.
 type Order struct {
-	Login            string   `bun:"login" json:"-"`
-	Order            string   `bun:"order" json:"order"`
-	Status           string   `bun:"status" json:"order_status"`
-	UploadedAt       string   `bun:"uploaded_at" json:"uploaded_at"`
-	BonusesWithdrawn *float32 `bun:"bonuses_withdrawn"`
-	Accrual          *float32 `bun:"accrual" json:"order_accrual"`
+	Login      string   `bun:"login" json:"-"`
+	Order      string   `bun:"order" json:"order"`
+	Status     string   `bun:"status" json:"order_status"`
+	UploadedAt string   `bun:"uploaded_at" json:"uploaded_at"`
+	Bonuses    *float32 `bun:"bonuses" json:"bonuses_withdrawn"`
+	Accrual    *float32 `bun:"accrual" json:"order_accrual"`
 }
 
 // Структура, предназначенная для возврата клиенту данных о заказах с снятыми бонусами
@@ -32,7 +36,7 @@ type Points struct {
 	Accrual *float32 `json:"points_accrual"`
 }
 
-type Entity struct {
+type AllEntity struct {
 	Order
 	User
 	Points

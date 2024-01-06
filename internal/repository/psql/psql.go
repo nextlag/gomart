@@ -21,7 +21,7 @@ const (
 		"order" VARCHAR(255) PRIMARY KEY,
 		status VARCHAR(255),
 		uploaded_at TIMESTAMP,
-		bonuses_withdrawn FLOAT,
+		bonuses FLOAT,
 		accrual FLOAT
 	);`
 )
@@ -71,7 +71,7 @@ func New(cfg string, log *slog.Logger) (*Postgres, error) {
 		return nil, fmt.Errorf("create table error: %v", err.Error())
 	}
 
-	log.Info("database connection successful")
+	log.Info("db connection success")
 
 	return storage, nil
 }

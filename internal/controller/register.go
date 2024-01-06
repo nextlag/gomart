@@ -10,29 +10,30 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/nextlag/gomart/internal/mw/auth"
+	"github.com/nextlag/gomart/internal/usecase"
 	"github.com/nextlag/gomart/pkg/generatestring"
 )
 
 // Register представляет собой контроллер для обработки регистрации пользователя.
 type Register struct {
-	uc  UseCase // UseCase для обработки бизнес-логики регистрации
+	uc  *usecase.UseCase // UseCase для обработки бизнес-логики регистрации
 	log *slog.Logger
 }
 
 // NewRegister создает новый экземпляр контроллера Register.
-func NewRegister(uc UseCase, log *slog.Logger) *Register {
+func NewRegister(uc *usecase.UseCase, log *slog.Logger) *Register {
 	return &Register{uc: uc, log: log}
 }
 
 // ServeHTTP обрабатывает HTTP-запросы для регистрации пользователя.
 func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var user Credentials
-
+	user := h.uc.GetEntity().User
 	// Декодируем JSON-данные из тела запроса в структуру Credentials
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&user); err != nil {
-		http.Error(w, "failed to decode json", http.StatusBadRequest)
+		h.log.Error("Decode JSON", "Login", user.Login, "error Register handler", err.Error())
+		http.Error(w, h.uc.Status().DecodeJSON.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -40,14 +41,14 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case len(user.Login) == 0:
 		h.log.Info("error: empty login")
-		http.Error(w, "wrong request", http.StatusBadRequest)
+		http.Error(w, h.uc.Status().Request.Error(), http.StatusBadRequest)
 		return
 	case len(user.Password) == 0:
 		h.log.Info("generating password")
 		user.Password = generatestring.NewRandomString(8)
 	}
 
-	h.log.Debug("autorization", "login", user.Login, "password", user.Password)
+	h.log.Debug("authorization", "login", user.Login, "password", user.Password)
 
 	// Вызываем метод DoRegister UseCase для выполнения регистрации
 	if err := h.uc.DoRegister(r.Context(), user.Login, user.Password, r); err != nil {
@@ -60,7 +61,7 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "login is already token", http.StatusConflict)
 		default:
 			// В противном случае возвращаем внутреннюю ошибку сервера
-			http.Error(w, "internal Server Error", http.StatusInternalServerError)
+			http.Error(w, h.uc.Status().InternalServer.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -69,7 +70,7 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	jwt, err := auth.SetAuth(user.Login, h.log, w, r)
 	if err != nil {
 		h.log.Error("can't set cookie: ", "error controller|register", err.Error())
-		http.Error(w, "internal Server Error", http.StatusInternalServerError)
+		http.Error(w, h.uc.Status().InternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
 	h.log.Debug("authentication", "login", user.Login, "token", jwt)

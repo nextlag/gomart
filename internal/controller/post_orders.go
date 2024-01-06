@@ -2,6 +2,7 @@ package controller
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -11,15 +12,16 @@ import (
 )
 
 type PostOrders struct {
-	uc  UseCase
+	uc  *usecase.UseCase
 	log *slog.Logger
 }
 
-func NewPostOrders(uc UseCase, log *slog.Logger) *PostOrders {
+func NewPostOrders(uc *usecase.UseCase, log *slog.Logger) *PostOrders {
 	return &PostOrders{uc: uc, log: log}
 }
 
 func (h *PostOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	er := h.uc.Status()
 	// Получаем логин из контекста
 	login, _ := r.Context().Value(auth.LoginKey).(string)
 
@@ -28,30 +30,31 @@ func (h *PostOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	order := string(body)
 	switch {
 	case order == "":
-		http.Error(w, "invalid request format", http.StatusBadRequest)
+		http.Error(w, er.RequestFormat.Error(), http.StatusBadRequest)
 		return
 	case err != nil:
 		h.log.Error("body reading error", "error PostOrder handler", err.Error())
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		http.Error(w, er.InternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = h.uc.DoInsertOrder(r.Context(), login, order)
 	switch {
-	case errors.Is(err, usecase.ErrOrderFormat):
-		http.Error(w, "incorrect order format", http.StatusUnprocessableEntity)
+	case errors.Is(err, er.OrderFormat):
+		http.Error(w, er.OrderFormat.Error(), http.StatusUnprocessableEntity)
 		return
-	case errors.Is(err, usecase.ErrAnotherUser):
-		http.Error(w, "the order number has already been uploaded by another user", http.StatusConflict)
+	case errors.Is(err, er.AnotherUser):
+		http.Error(w, er.AnotherUser.Error(), http.StatusConflict)
 		return
-	case errors.Is(err, usecase.ErrThisUser):
-		http.Error(w, "the order number has already been uploaded by this user", http.StatusOK)
+	case errors.Is(err, er.ThisUser):
+		http.Error(w, er.ThisUser.Error(), http.StatusOK)
 		return
 	default:
-		http.Error(w, "new order number accepted for processing", http.StatusAccepted)
+		http.Error(w, er.OrderAccepted.Error(), http.StatusAccepted)
 	}
 
 	// Обработка успешного запроса
 	h.log.Info("order received", "login", login, "order", order)
-	w.WriteHeader(http.StatusOK)
+	o := fmt.Sprintf("order number: %s\n", order)
+	w.Write([]byte(o))
 }

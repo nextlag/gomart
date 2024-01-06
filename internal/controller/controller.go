@@ -4,18 +4,20 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+
+	"github.com/nextlag/gomart/internal/usecase"
 )
 
 type UseCase interface {
 	DoRegister(ctx context.Context, login, password string, r *http.Request) error
 	DoAuth(ctx context.Context, login, password string, r *http.Request) error
-	DoInsertOrder(ctx context.Context, login string, order string) error
+	DoInsertOrder(ctx context.Context, login, order string) error
+	DoGetOrders(ctx context.Context, login string) ([]usecase.UseCase, error)
 }
 
-// A struct used to get and store data from a json requests.
-type Credentials struct {
+type User struct {
 	Login    string `json:"login"`
-	Password string `json:"password"`
+	Password string `json:"passwowrd"`
 }
 
 type Handlers struct {
@@ -28,7 +30,7 @@ type Handlers struct {
 	Withdrawals http.HandlerFunc
 }
 
-func New(uc UseCase, log *slog.Logger) *Handlers {
+func New(uc *usecase.UseCase, log *slog.Logger) *Handlers {
 	return &Handlers{
 		Balance:     NewBalance(uc, log).ServeHTTP,
 		GetOrders:   NewGetOrders(uc, log).ServeHTTP,
