@@ -11,6 +11,7 @@ import (
 
 	"github.com/nextlag/gomart/internal/entity"
 	"github.com/nextlag/gomart/internal/repository/psql"
+	"github.com/nextlag/gomart/pkg/luna"
 )
 
 type Storage struct {
@@ -19,13 +20,15 @@ type Storage struct {
 }
 
 var (
-	// An error indicating that an order is loaded by another user.
+	// ErrAnotherUser - заказ загружен другим пользователем
 	ErrAnotherUser = errors.New("the order number has already been uploaded by another user")
-	// An error indicating that an order is loaded by user.
+	// ErrThisUser - дубль заказа текущего пользователем
 	ErrThisUser = errors.New("the order number has already been uploaded by this user")
-	// An error indictating that a user has not enough balance.
-	ErrNotEnoughBalance = errors.New("not enough balance")
-	// An error indiating that no rows were found.
+	// ErrOrderFormat - ошибка формата заказа
+	ErrOrderFormat = errors.New("invalid order format")
+	// ErrNoBalance - недостаточно баланса.
+	ErrNoBalance = errors.New("not enough balance")
+	// ErrNoRows - строки не найдены
 	ErrNoRows = errors.New("no rows were found")
 )
 
@@ -80,6 +83,10 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 		UploadedAt:       now.Format(time.RFC3339),
 		Status:           "NEW",
 		BonusesWithdrawn: &bonusesWithdrawn,
+	}
+	validOrder := luna.CheckValidOrder(order)
+	if !validOrder {
+		return ErrOrderFormat
 	}
 
 	db := bun.NewDB(s.DB, pgdialect.New())

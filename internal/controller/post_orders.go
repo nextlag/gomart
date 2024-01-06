@@ -8,7 +8,6 @@ import (
 
 	"github.com/nextlag/gomart/internal/mw/auth"
 	"github.com/nextlag/gomart/internal/usecase"
-	"github.com/nextlag/gomart/pkg/luna"
 )
 
 type PostOrders struct {
@@ -29,31 +28,27 @@ func (h *PostOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	order := string(body)
 	switch {
 	case order == "":
-		http.Error(w, "неверный формат запроса", http.StatusBadRequest)
+		http.Error(w, "invalid request format", http.StatusBadRequest)
 		return
 	case err != nil:
 		h.log.Error("body reading error", "error PostOrder handler", err.Error())
-		http.Error(w, "внутренняя ошибка сервера", http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	// Проверка формата номера заказа
-	ok := luna.CheckValidOrder(order)
-	if !ok {
-		h.log.Info("invalid order format")
-		http.Error(w, "неверный формат заказа", http.StatusUnprocessableEntity)
-		return
-	}
 	err = h.uc.DoInsertOrder(r.Context(), login, order)
 	switch {
+	case errors.Is(err, usecase.ErrOrderFormat):
+		http.Error(w, "incorrect order format", http.StatusUnprocessableEntity)
+		return
 	case errors.Is(err, usecase.ErrAnotherUser):
-		http.Error(w, "номер заказа уже был загружен другим пользователем", http.StatusConflict)
+		http.Error(w, "the order number has already been uploaded by another user", http.StatusConflict)
 		return
 	case errors.Is(err, usecase.ErrThisUser):
-		http.Error(w, "номер заказа уже был загружен этим пользователем", http.StatusOK)
+		http.Error(w, "the order number has already been uploaded by this user", http.StatusOK)
 		return
 	default:
-		http.Error(w, "новый номер заказа принят в обработку", http.StatusAccepted)
+		http.Error(w, "new order number accepted for processing", http.StatusAccepted)
 	}
 
 	// Обработка успешного запроса

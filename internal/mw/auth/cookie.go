@@ -25,13 +25,13 @@ func CookieAuthentication(log *slog.Logger) func(next http.Handler) http.Handler
 
 			switch {
 			case errors.Is(err, errToken):
-				http.Error(w, "неверная сигнатура токена", http.StatusUnauthorized)
+				http.Error(w, "invalid token signature", http.StatusUnauthorized)
 			case errors.Is(err, errAuth):
 				log.Error("error empty login", "error CookieAuthentication", err.Error())
-				http.Error(w, "ошибка аутентификации: не задан логин", http.StatusUnauthorized)
+				http.Error(w, "authentication error login not specified", http.StatusUnauthorized)
 			case err != nil:
 				log.Error("error getting cookie", "error CookieAuthentication", err.Error())
-				http.Error(w, "ошибка аутентификации", http.StatusUnauthorized)
+				http.Error(w, "authentication error", http.StatusUnauthorized)
 			default:
 				// Создаем новый контекст с установленным логином
 				ctx := context.WithValue(r.Context(), LoginKey, login)
