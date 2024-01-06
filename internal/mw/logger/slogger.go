@@ -23,6 +23,7 @@ type RequestFields struct {
 	Status      int    `json:"status"`
 	Bytes       int    `json:"bytes,omitempty"`
 	Duration    string `json:"duration"`
+	Compress    string `json:"compress"`
 }
 
 // New создает и возвращает новый middleware для логирования HTTP запросов.
@@ -46,14 +47,15 @@ func New(log *slog.Logger) func(next http.Handler) http.Handler {
 			defer func() {
 				// После выполнения запроса, логируем информацию о запросе, включая статус ответа, количество байтов и продолжительность.
 				requestFields.Status = ww.Status()
+				requestFields.Compress = ww.Header().Get("Content-Encoding")
 				requestFields.Bytes = ww.BytesWritten()
 				requestFields.Duration = time.Since(t1).String()
 
 				// Добавляем логирование, только если статус запроса - ошибка
 				if requestFields.Status >= http.StatusInternalServerError {
-					log.Error("request completed with error", slog.Any("request", requestFields))
+					log.Error("request completed with error", "error logger", requestFields)
 				} else {
-					log.Info("", slog.Any("request", requestFields))
+					log.Info("request", "request fields", requestFields)
 				}
 			}()
 
@@ -79,7 +81,8 @@ func SetupLogger() *slog.Logger {
 // func SetupLogger() *slog.Logger {
 // 	var log *slog.Logger
 // 	log = slog.New(
-// 		slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
+// 		// slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
+// 		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
 // 	)
 // 	return log
 // }
