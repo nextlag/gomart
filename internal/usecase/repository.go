@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -16,6 +17,17 @@ type Storage struct {
 	*psql.Postgres
 	*slog.Logger
 }
+
+var (
+	// An error indicating that an order is loaded by another user.
+	ErrAnotherUser = errors.New("the order number has already been uploaded by another user")
+	// An error indicating that an order is loaded by user.
+	ErrThisUser = errors.New("the order number has already been uploaded by this user")
+	// An error indictating that a user has not enough balance.
+	ErrNotEnoughBalance = errors.New("not enough balance")
+	// An error indiating that no rows were found.
+	ErrNoRows = errors.New("no rows were found")
+)
 
 func NewStorage(db *psql.Postgres, log *slog.Logger) *Storage {
 	return &Storage{db, log}
@@ -56,6 +68,7 @@ func (s *Storage) Auth(ctx context.Context, login, password string) error {
 
 	return nil
 }
+
 func (s *Storage) InsertOrder(ctx context.Context, login string, order string) error {
 	now := time.Now()
 
@@ -78,11 +91,16 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 		Where(`"order" = ?`, order).
 		Scan(ctx)
 	if err == nil {
-		// Order exists, return an error
-		return ErrAlreadyLoadedOrder
+		// Заказ существует
+		if checkOrder.Login == login {
+			// Заказ принадлежит текущему пользователю
+			return ErrThisUser
+		}
+		// Заказ принадлежит другому пользователю
+		return ErrAnotherUser
 	}
 
-	// Order does not exist, insert it
+	// Заказ не существует, вставьте его
 	_, err = db.NewInsert().
 		Model(userOrder).
 		Exec(ctx)
@@ -93,3 +111,43 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 
 	return nil
 }
+
+// func (s *Storage) InsertOrder(ctx context.Context, login string, order string) error {
+// 	now := time.Now()
+//
+// 	bonusesWithdrawn := float32(0)
+//
+// 	userOrder := &entity.Order{
+// 		Login:            login,
+// 		Order:            order,
+// 		UploadedAt:       now.Format(time.RFC3339),
+// 		Status:           "NEW",
+// 		BonusesWithdrawn: &bonusesWithdrawn,
+// 	}
+//
+// 	db := bun.NewDB(s.DB, pgdialect.New())
+//
+// 	var checkOrder entity.Order
+//
+// 	err := db.NewSelect().
+// 		Model(&checkOrder).
+// 		Where(`"order" = ?`, order).
+// 		Scan(ctx)
+// 	if err != nil {
+// 		_, err := db.NewInsert().
+// 			Model(userOrder).
+// 			Exec(ctx)
+// 		if err != nil {
+// 			s.Error("error writing data: ", "error InsertOrder", err.Error())
+// 			return err
+// 		}
+//
+// 	}
+// 	if checkOrder.Login != login && checkOrder.Order == order {
+// 		return ErrAlreadyLoadedOrder
+// 	} else if checkOrder.Login == login && checkOrder.Order == order {
+// 		return ErrThisUser
+// 	}
+//
+// 	return nil
+// }

@@ -23,8 +23,8 @@ func SetupRouter(handler *chi.Mux, log *slog.Logger, useCase *usecase.UseCase) *
 		r.Post("/api/user/register", h.Register)
 		r.Post("/api/user/login", h.Login)
 
-		// Группа с применением WithCookieLogin ко всем роутам внутри
-		r.With(auth.WithCookieLogin(log)).Group(func(r chi.Router) {
+		// Группа с применением CookieAuthentication ко всем роутам внутри
+		r.With(auth.CookieAuthentication(log)).Group(func(r chi.Router) {
 			r.Post("/api/user/orders", h.PostOrders)
 			r.Post("/api/user/balance/withdraw", h.Withdraw)
 			r.Get("/api/user/balance", h.Balance)

@@ -22,43 +22,41 @@ func NewPostOrders(uc UseCase, log *slog.Logger) *PostOrders {
 
 func (h *PostOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Получаем логин из контекста
-	login, ok := r.Context().Value(auth.LoginKey).(string)
-	if !ok {
-		h.log.Error("error getting login from context", "package", "controller", "file", "post_orders.go")
-		http.Error(w, "you are not authenticated", http.StatusUnauthorized)
-		return
-	}
+	login, _ := r.Context().Value(auth.LoginKey).(string)
 
 	// Чтение тела запроса
 	body, err := io.ReadAll(r.Body)
-	if err != nil {
+	order := string(body)
+	switch {
+	case order == "":
+		http.Error(w, "неверный формат запроса", http.StatusBadRequest)
+		return
+	case err != nil:
 		h.log.Error("body reading error", "error PostOrder handler", err.Error())
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		http.Error(w, "внутренняя ошибка сервера", http.StatusInternalServerError)
 		return
 	}
 
 	// Проверка формата номера заказа
-	order := string(body)
-	ok = luna.CheckValidOrder(order)
+	ok := luna.CheckValidOrder(order)
 	if !ok {
 		h.log.Info("invalid order format")
-		http.Error(w, "invalid order format", http.StatusUnprocessableEntity)
+		http.Error(w, "неверный формат заказа", http.StatusUnprocessableEntity)
 		return
 	}
 	err = h.uc.DoInsertOrder(r.Context(), login, order)
 	switch {
-	case errors.Is(err, usecase.ErrAlreadyLoadedOrder):
-		http.Error(w, "the order number has already been uploaded by another user", http.StatusConflict)
+	case errors.Is(err, usecase.ErrAnotherUser):
+		http.Error(w, "номер заказа уже был загружен другим пользователем", http.StatusConflict)
 		return
-	case errors.Is(err, usecase.ErrYouAlreadyLoadedOrder):
-		http.Error(w, "the order number has already been uploaded by this user", http.StatusOK)
+	case errors.Is(err, usecase.ErrThisUser):
+		http.Error(w, "номер заказа уже был загружен этим пользователем", http.StatusOK)
 		return
 	default:
-		http.Error(w, "successfully loaded order", http.StatusAccepted)
+		http.Error(w, "новый номер заказа принят в обработку", http.StatusAccepted)
 	}
 
 	// Обработка успешного запроса
 	h.log.Info("order received", "login", login, "order", order)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("order successfully processed"))
 }

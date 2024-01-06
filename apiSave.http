@@ -25,7 +25,7 @@ GET http://localhost:8080/2qEhT1TF
 POST http://localhost:8080/api/user/login
 Host: localhost:8080
 Content-Type: application/json
-Cookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InVzZXIifQ.7ChccM-lJ5ApcXu7pX5iAE74tSn2um0lAgrCp5hkjbk
+#Cookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InVzZXIifQ.7ChccM-lJ5ApcXu7pX5iAE74tSn2um0lAgrCp5hkjbk
 
 {
   "login": "user",

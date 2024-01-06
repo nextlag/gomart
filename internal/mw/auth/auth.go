@@ -22,7 +22,10 @@ type Claims struct {
 }
 
 // errAuth - ошибка, указывающая, что пользователь не аутентифицирован.
-var errAuth = errors.New("вы не аутентифицированы")
+var (
+	errAuth  = errors.New("authentication error")
+	errToken = errors.New("signature is invalid")
+)
 
 // buildJWTString генерирует токен JWT с предоставленным логином и подписывает его с использованием настроенного секретного ключа.
 func buildJWTString(login string, log *slog.Logger) (string, error) {
@@ -78,11 +81,11 @@ func getLogin(tokenString string, log *slog.Logger) (string, error) {
 		return []byte(config.Cfg.SecretToken), nil
 	})
 	if err != nil {
-		log.Error("error parsing token", "error", err.Error())
-		return "", err
+		log.Error("error parsing token", "getLogin", err.Error())
+		return "", errToken
 	}
 	if !token.Valid {
-		log.Error("Token is not valid", nil)
+		log.Error("token is not valid", nil)
 		return "", err
 	}
 	log.Debug("getLogin", "login", claims.Login)
