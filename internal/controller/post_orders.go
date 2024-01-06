@@ -2,6 +2,7 @@ package controller
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -28,30 +29,31 @@ func (h *PostOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	order := string(body)
 	switch {
 	case order == "":
-		http.Error(w, "invalid request format", http.StatusBadRequest)
+		http.Error(w, usecase.ErrRequestFormat.Error(), http.StatusBadRequest)
 		return
 	case err != nil:
 		h.log.Error("body reading error", "error PostOrder handler", err.Error())
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		http.Error(w, usecase.ErrInternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = h.uc.DoInsertOrder(r.Context(), login, order)
 	switch {
 	case errors.Is(err, usecase.ErrOrderFormat):
-		http.Error(w, "incorrect order format", http.StatusUnprocessableEntity)
+		http.Error(w, usecase.ErrOrderFormat.Error(), http.StatusUnprocessableEntity)
 		return
 	case errors.Is(err, usecase.ErrAnotherUser):
-		http.Error(w, "the order number has already been uploaded by another user", http.StatusConflict)
+		http.Error(w, usecase.ErrAnotherUser.Error(), http.StatusConflict)
 		return
 	case errors.Is(err, usecase.ErrThisUser):
-		http.Error(w, "the order number has already been uploaded by this user", http.StatusOK)
+		http.Error(w, usecase.ErrThisUser.Error(), http.StatusOK)
 		return
 	default:
-		http.Error(w, "new order number accepted for processing", http.StatusAccepted)
+		http.Error(w, usecase.ErrOrderAccepted.Error(), http.StatusAccepted)
 	}
 
 	// Обработка успешного запроса
 	h.log.Info("order received", "login", login, "order", order)
-	w.WriteHeader(http.StatusOK)
+	o := fmt.Sprintf("order number: %s\n", order)
+	w.Write([]byte(o))
 }

@@ -13,7 +13,6 @@ import (
 
 	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/controller/router"
-	"github.com/nextlag/gomart/internal/mw/gzip"
 	"github.com/nextlag/gomart/internal/mw/logger"
 	"github.com/nextlag/gomart/internal/repository/psql"
 	"github.com/nextlag/gomart/internal/usecase"
@@ -67,11 +66,8 @@ func main() {
 	// Настройка маршрутов с использованием роутера и создание обработчика запросов.
 	rout := router.SetupRouter(handler, log, uc)
 
-	// Создание обработчика для поддержки сжатия gzip при обработке HTTP-запросов.
-	mv := gzip.New(rout.ServeHTTP)
-
 	// Настройка HTTP-сервера с использованием созданного маршрутизатора.
-	srv := setupServer(mv)
+	srv := setupServer(rout)
 
 	log.Info("server starting", slog.String("host", srv.Addr))
 

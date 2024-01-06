@@ -10,6 +10,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/nextlag/gomart/internal/mw/auth"
+	"github.com/nextlag/gomart/internal/usecase"
 	"github.com/nextlag/gomart/pkg/generatestring"
 )
 
@@ -60,7 +61,7 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "login is already token", http.StatusConflict)
 		default:
 			// В противном случае возвращаем внутреннюю ошибку сервера
-			http.Error(w, "internal Server Error", http.StatusInternalServerError)
+			http.Error(w, usecase.ErrInternalServer.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -69,7 +70,7 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	jwt, err := auth.SetAuth(user.Login, h.log, w, r)
 	if err != nil {
 		h.log.Error("can't set cookie: ", "error controller|register", err.Error())
-		http.Error(w, "internal Server Error", http.StatusInternalServerError)
+		http.Error(w, usecase.ErrInternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
 	h.log.Debug("authentication", "login", user.Login, "token", jwt)
