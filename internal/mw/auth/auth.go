@@ -51,7 +51,7 @@ func SetAuth(login string, log *slog.Logger, w http.ResponseWriter, r *http.Requ
 	// Сгенерировать токен JWT для логина.
 	jwtToken, err := buildJWTString(login, log)
 	if err != nil {
-		log.Error("cookie creation error", "package", "auth", "file", "auth.go", "error", err.Error())
+		log.Error("cookie creation error", "error SetAuth", err.Error())
 		return "", err
 	}
 
@@ -59,7 +59,7 @@ func SetAuth(login string, log *slog.Logger, w http.ResponseWriter, r *http.Requ
 	cookie := http.Cookie{
 		Name:  Cookie,
 		Value: jwtToken,
-		Path:  r.URL.Path,
+		Path:  "/",
 	}
 	http.SetCookie(w, &cookie)
 	log.Debug("SetAuth", "received token", jwtToken)

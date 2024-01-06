@@ -12,8 +12,8 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
-  "login": "nextbug",
-  "password": "123df23"
+  "login": "user",
+  "password": "123"
 }
 
 ### Get
@@ -29,7 +29,7 @@ Cookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InVzZXIifQ.7ChccM-
 
 {
   "login": "user",
-  "password": "12345"
+  "password": "123"
 }
 
 ### POST request with cookie passed through headers and data in the body

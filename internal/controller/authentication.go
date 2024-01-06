@@ -42,5 +42,5 @@ func (h *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Возвращаем успешный статус и сообщение об успешной регистрации
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("you have successfully logged in"))
+	w.Write([]byte(l))
 }
