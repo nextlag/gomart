@@ -1,0 +1,53 @@
+package usecase
+
+import (
+	"context"
+	"net/http"
+
+	"github.com/nextlag/gomart/internal/entity"
+)
+
+type Repository interface {
+	// Register - регистрация пользователя
+	Register(ctx context.Context, login, password string) error
+	// Auth — аутентификация пользователя.
+	Auth(ctx context.Context, login, password string) error
+	// InsertOrder - загрузка номера заказа.
+	InsertOrder(ctx context.Context, login string, order string) error
+	// GetOrders - получение списка загруженных номеров заказов
+	GetOrders(ctx context.Context, login string) (*[]UseCase, error)
+}
+
+type UseCase struct {
+	r  Repository // interface Repository
+	e  *entity.AllEntity
+	er *ErrStatus
+}
+
+func New(r Repository) *UseCase {
+	e := &entity.AllEntity{}
+	er := &ErrStatus{}
+	return &UseCase{r, e, er}
+}
+
+func (uc *UseCase) GetEntity() *entity.AllEntity {
+	return uc.e
+}
+
+func (uc *UseCase) DoRegister(ctx context.Context, login, password string, _ *http.Request) error {
+	err := uc.r.Register(ctx, login, password)
+	return err
+}
+func (uc *UseCase) DoAuth(ctx context.Context, login, password string, _ *http.Request) error {
+	err := uc.r.Auth(ctx, login, password)
+	return err
+}
+func (uc *UseCase) DoInsertOrder(ctx context.Context, login string, order string) error {
+	err := uc.r.InsertOrder(ctx, login, order)
+	return err
+}
+
+func (uc *UseCase) DoGetOrders(ctx context.Context, login string) (*[]UseCase, error) {
+	orders, err := uc.r.GetOrders(ctx, login)
+	return orders, err
+}
