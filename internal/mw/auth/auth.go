@@ -2,13 +2,13 @@
 package auth
 
 import (
-	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/nextlag/gomart/internal/config"
+	"github.com/nextlag/gomart/internal/usecase"
 )
 
 const (
@@ -20,12 +20,6 @@ type Claims struct {
 	jwt.RegisteredClaims
 	Login string `json:"login"`
 }
-
-// errAuth - ошибка, указывающая, что пользователь не аутентифицирован.
-var (
-	errAuth  = errors.New("authentication error")
-	errToken = errors.New("signature is invalid")
-)
 
 // buildJWTString генерирует токен JWT с предоставленным логином и подписывает его с использованием настроенного секретного ключа.
 func buildJWTString(login string, log *slog.Logger) (string, error) {
@@ -82,7 +76,7 @@ func getLogin(tokenString string, log *slog.Logger) (string, error) {
 	})
 	if err != nil {
 		log.Error("error parsing token", "getLogin", err.Error())
-		return "", errToken
+		return "", usecase.Status().Token
 	}
 	if !token.Valid {
 		log.Error("token is not valid", nil)
@@ -98,7 +92,7 @@ func GetCookie(log *slog.Logger, r *http.Request) (string, error) {
 	signedLogin, err := r.Cookie(Cookie)
 	if err != nil {
 		log.Error("error receiving cookie", "error GetCookie", nil)
-		return "", errAuth
+		return "", usecase.Status().Auth
 	}
 
 	// Извлекает логин из токена JWT в куке.

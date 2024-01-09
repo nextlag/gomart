@@ -72,7 +72,7 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 	}
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
-		return ErrOrderFormat
+		return Status().OrderFormat
 	}
 
 	db := bun.NewDB(s.DB, pgdialect.New())
@@ -87,10 +87,10 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 		// Заказ существует
 		if checkOrder.Login == login {
 			// Заказ принадлежит текущему пользователю
-			return ErrThisUser
+			return Status().ThisUser
 		}
 		// Заказ принадлежит другому пользователю
-		return ErrAnotherUser
+		return Status().AnotherUser
 	}
 
 	// Заказ не существует, вставьте его

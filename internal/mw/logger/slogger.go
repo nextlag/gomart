@@ -66,6 +66,7 @@ func New(log *slog.Logger) func(next http.Handler) http.Handler {
 	}
 }
 
+// SetupLogger - инициализация middleware для логирования HTTP-запросов
 func SetupLogger() *slog.Logger {
 	opts := slogpretty.PrettyHandlerOptions{
 		SlogOpts: &slog.HandlerOptions{

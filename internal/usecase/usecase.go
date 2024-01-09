@@ -26,9 +26,9 @@ func New(r Repository) *UseCase {
 	return &UseCase{r, e}
 }
 
-// func NewEntity(uc UseCase) *entity.Entity {
-// 	return uc.e
-// }
+func NewEntity(uc UseCase) *entity.Entity {
+	return uc.e
+}
 
 func (uc *UseCase) DoRegister(ctx context.Context, login, password string, r *http.Request) error {
 	err := uc.r.Register(ctx, login, password)

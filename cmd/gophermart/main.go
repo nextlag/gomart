@@ -32,15 +32,13 @@ func main() {
 	}
 
 	var (
-		log = logger.SetupLogger()
-		cfg = config.Cfg
+		log     = logger.SetupLogger()
+		cfg     = config.Cfg
+		er      = usecase.Status()
+		r       usecase.Repository
+		useCase = usecase.New(r)
+		entity  = usecase.NewEntity(*useCase)
 	)
-	// TODO: drop
-	// var r       usecase.Repository
-	// var useCase = usecase.New(r)
-	// var entity  = usecase.NewEntity(*useCase)
-	// entity.Time = time.Now().Format("15:04:05 02.01.2006")
-	// log.Debug("checking the transfer of data into the Entity structure", "current time", entity.Time)
 
 	log.Debug("initialized flags",
 		slog.String("-a", cfg.Host),
@@ -64,7 +62,7 @@ func main() {
 	handler := chi.NewRouter()
 
 	// Настройка маршрутов с использованием роутера и создание обработчика запросов.
-	rout := router.SetupRouter(handler, log, uc)
+	rout := router.SetupRouter(handler, log, uc, er, entity)
 
 	// Настройка HTTP-сервера с использованием созданного маршрутизатора.
 	srv := setupServer(rout)
