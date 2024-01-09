@@ -12,16 +12,16 @@ import (
 )
 
 type PostOrders struct {
-	uc  UseCase
+	uc  *usecase.UseCase
 	log *slog.Logger
-	er  *usecase.ErrStatus
 }
 
-func NewPostOrders(uc UseCase, log *slog.Logger, er *usecase.ErrStatus) *PostOrders {
-	return &PostOrders{uc: uc, log: log, er: er}
+func NewPostOrders(uc *usecase.UseCase, log *slog.Logger) *PostOrders {
+	return &PostOrders{uc: uc, log: log}
 }
 
 func (h *PostOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	er := h.uc.Status()
 	// Получаем логин из контекста
 	login, _ := r.Context().Value(auth.LoginKey).(string)
 
@@ -30,27 +30,27 @@ func (h *PostOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	order := string(body)
 	switch {
 	case order == "":
-		http.Error(w, h.er.RequestFormat.Error(), http.StatusBadRequest)
+		http.Error(w, er.RequestFormat.Error(), http.StatusBadRequest)
 		return
 	case err != nil:
 		h.log.Error("body reading error", "error PostOrder handler", err.Error())
-		http.Error(w, h.er.InternalServer.Error(), http.StatusInternalServerError)
+		http.Error(w, er.InternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = h.uc.DoInsertOrder(r.Context(), login, order)
 	switch {
-	case errors.Is(err, h.er.OrderFormat):
-		http.Error(w, h.er.OrderFormat.Error(), http.StatusUnprocessableEntity)
+	case errors.Is(err, er.OrderFormat):
+		http.Error(w, er.OrderFormat.Error(), http.StatusUnprocessableEntity)
 		return
-	case errors.Is(err, h.er.AnotherUser):
-		http.Error(w, h.er.AnotherUser.Error(), http.StatusConflict)
+	case errors.Is(err, er.AnotherUser):
+		http.Error(w, er.AnotherUser.Error(), http.StatusConflict)
 		return
-	case errors.Is(err, h.er.ThisUser):
-		http.Error(w, h.er.ThisUser.Error(), http.StatusOK)
+	case errors.Is(err, er.ThisUser):
+		http.Error(w, er.ThisUser.Error(), http.StatusOK)
 		return
 	default:
-		http.Error(w, h.er.OrderAccepted.Error(), http.StatusAccepted)
+		http.Error(w, er.OrderAccepted.Error(), http.StatusAccepted)
 	}
 
 	// Обработка успешного запроса

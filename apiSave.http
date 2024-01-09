@@ -13,7 +13,7 @@ Content-Type: application/json
 
 {
   "login": "user",
-  "password": "123"
+  "password": "12345"
 }
 
 ### Get
@@ -29,7 +29,7 @@ Cookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InVzZXIifQ.7ChccM-
 
 {
   "login": "user",
-  "password": "123"
+  "password": "12345"
 }
 
 ### POST request with cookie passed through headers and data in the body

@@ -32,12 +32,10 @@ func main() {
 	}
 
 	var (
-		log     = logger.SetupLogger()
-		cfg     = config.Cfg
-		er      = usecase.Status()
-		r       usecase.Repository
-		useCase = usecase.New(r)
-		entity  = usecase.NewEntity(*useCase)
+		log = logger.SetupLogger()
+		cfg = config.Cfg
+		r   usecase.UseCase
+		er  = r.Status()
 	)
 
 	log.Debug("initialized flags",
@@ -47,6 +45,7 @@ func main() {
 		slog.String("-l", cfg.LogLevel.String()),
 		slog.String("-r", cfg.Accrual),
 	)
+
 	// Repository
 	db, err := psql.New(cfg.DSN, log)
 	if err != nil {
@@ -56,13 +55,13 @@ func main() {
 	defer db.Close()
 
 	// Инициализация use case, который предоставляет бизнес-логику для обработки запросов.
-	uc := usecase.New(usecase.NewStorage(db, log))
+	uc := usecase.New(usecase.NewStorage(er, db, log))
 
 	// Создание нового маршрутизатора Chi для обработки HTTP-запросов.
 	handler := chi.NewRouter()
 
 	// Настройка маршрутов с использованием роутера и создание обработчика запросов.
-	rout := router.SetupRouter(handler, log, uc, er, entity)
+	rout := router.SetupRouter(handler, log, uc)
 
 	// Настройка HTTP-сервера с использованием созданного маршрутизатора.
 	srv := setupServer(rout)

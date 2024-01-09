@@ -4,15 +4,9 @@ import (
 	"errors"
 )
 
-var (
-	// ErrNoBalance - недостаточно баланса.
-	ErrNoBalance = errors.New("not enough balance")
-	// ErrNoRows - строки не найдены
-	ErrNoRows = errors.New("no rows were found")
-)
-
-// ErrAuth - ошибка, указывающая, что пользователь не аутентифицирован.
-var ()
+type ErrUsecase interface {
+	Status() *ErrStatus
+}
 
 type ErrorAuth struct {
 	Auth  error // Auth ошибка аутентификации
@@ -20,12 +14,14 @@ type ErrorAuth struct {
 }
 
 type ErrCommon struct {
-	InternalServer error // InternalServer - status 500: внутренняя ошибка сервера
+	InternalServer error // InternalServer status 500: внутренняя ошибка сервера
+	Request        error // Request status 400: error request
+	DecodeJSON     error // DecodeJSON status 400: failed to decode json
 }
 
-type ErrRegistration struct {
-	Request    error
-	DecodeJSON error
+type ErrAuthentication struct {
+	Unauthorized error // Unauthorized status 401 incorrect login or password
+	NoCookie     error // NoCookie status 500 can't set cookie
 }
 
 type ErrPostOrder struct {
@@ -37,14 +33,20 @@ type ErrPostOrder struct {
 	OrderFormat   error // OrderFormat status 422: неверный формат номера заказа
 }
 
+type ErrGetOrders struct {
+	GetOrders error // GetOrders status 500: ошибка получения ордера
+	NoContent error // NoContent status 204: нет данных для ответа
+}
+
 type ErrStatus struct {
 	*ErrorAuth
 	*ErrCommon
-	*ErrRegistration
+	*ErrAuthentication
 	*ErrPostOrder
+	*ErrGetOrders
 }
 
-func Status() *ErrStatus {
+func (uc *UseCase) Status() *ErrStatus {
 	return &ErrStatus{
 		&ErrorAuth{
 			Auth:  errors.New("authentication error"),
@@ -52,10 +54,12 @@ func Status() *ErrStatus {
 		},
 		&ErrCommon{
 			InternalServer: errors.New("insert server error"),
+			Request:        errors.New("error request"),
+			DecodeJSON:     errors.New("failed to decode json"),
 		},
-		&ErrRegistration{
-			Request:    errors.New("error request"),
-			DecodeJSON: errors.New("failed to decode json"),
+		&ErrAuthentication{
+			Unauthorized: errors.New("incorrect login or password"),
+			NoCookie:     errors.New("can't set cookie"),
 		},
 		&ErrPostOrder{
 			ThisUser:      errors.New("the order number has already been uploaded by this user"),
@@ -64,6 +68,10 @@ func Status() *ErrStatus {
 			RequestFormat: errors.New("invalid request format"),
 			UnauthUser:    errors.New("user is not authenticated"),
 			OrderFormat:   errors.New("invalid order format"),
+		},
+		&ErrGetOrders{
+			GetOrders: errors.New("error getting orders"),
+			NoContent: errors.New("no information to answer"),
 		},
 	}
 }

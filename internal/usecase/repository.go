@@ -14,12 +14,13 @@ import (
 )
 
 type Storage struct {
+	*ErrStatus
 	*psql.Postgres
 	*slog.Logger
 }
 
-func NewStorage(db *psql.Postgres, log *slog.Logger) *Storage {
-	return &Storage{db, log}
+func NewStorage(er *ErrStatus, db *psql.Postgres, log *slog.Logger) *Storage {
+	return &Storage{er, db, log}
 }
 
 func (s *Storage) Register(ctx context.Context, login string, password string) error {
@@ -64,15 +65,15 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 	bonusesWithdrawn := float32(0)
 
 	userOrder := &entity.Order{
-		Login:            login,
-		Order:            order,
-		UploadedAt:       now.Format(time.RFC3339),
-		Status:           "NEW",
-		BonusesWithdrawn: &bonusesWithdrawn,
+		Login:      login,
+		Order:      order,
+		UploadedAt: now.Format(time.RFC3339),
+		Status:     "NEW",
+		Bonuses:    &bonusesWithdrawn,
 	}
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
-		return Status().OrderFormat
+		return s.OrderFormat
 	}
 
 	db := bun.NewDB(s.DB, pgdialect.New())
@@ -87,10 +88,10 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 		// Заказ существует
 		if checkOrder.Login == login {
 			// Заказ принадлежит текущему пользователю
-			return Status().ThisUser
+			return s.ThisUser
 		}
 		// Заказ принадлежит другому пользователю
-		return Status().AnotherUser
+		return s.AnotherUser
 	}
 
 	// Заказ не существует, вставьте его
@@ -103,4 +104,8 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 	}
 
 	return nil
+}
+
+func (s *Storage) GetOrders(ctx context.Context, login string) (*[]UseCase, error) {
+	return nil, nil
 }
