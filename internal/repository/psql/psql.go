@@ -17,12 +17,12 @@ const (
 		withdrawn FLOAT
 	);`
 	ordersTable = `CREATE TABLE IF NOT EXISTS orders (
-		login VARCHAR(255),
-		"order" VARCHAR(255) PRIMARY KEY,
+		users VARCHAR(255),
+		number VARCHAR(255) PRIMARY KEY,
 		status VARCHAR(255),
+		accrual FLOAT,
 		uploaded_at TIMESTAMP,
-		bonuses FLOAT,
-		accrual FLOAT
+		bonuses_withdrawn FLOAT
 	);`
 )
 

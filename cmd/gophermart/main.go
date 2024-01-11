@@ -34,8 +34,7 @@ func main() {
 	var (
 		log = logger.SetupLogger()
 		cfg = config.Cfg
-		r   usecase.UseCase
-		er  = r.Status()
+		er  = usecase.NewErr()
 	)
 
 	log.Debug("initialized flags",
@@ -61,7 +60,7 @@ func main() {
 	handler := chi.NewRouter()
 
 	// Настройка маршрутов с использованием роутера и создание обработчика запросов.
-	rout := router.SetupRouter(handler, log, uc)
+	rout := router.SetupRouter(handler, log, uc, er)
 
 	// Настройка HTTP-сервера с использованием созданного маршрутизатора.
 	srv := setupServer(rout)
