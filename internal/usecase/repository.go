@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -73,7 +74,8 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 	}
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
-		return s.OrderFormat
+		s.Logger.Debug("InsertOrder", "no valid", validOrder, "status", "invalid order format")
+		return errors.New("invalid order format")
 	}
 
 	db := bun.NewDB(s.DB, pgdialect.New())

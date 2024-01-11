@@ -40,16 +40,20 @@ func (h *PostOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	err = h.uc.DoInsertOrder(r.Context(), login, order)
 	switch {
-	case errors.Is(err, er.OrderFormat):
+	case errors.As(err, &er.OrderFormat):
+		h.log.Debug("insert Order 422", "error", err.Error())
 		http.Error(w, er.OrderFormat.Error(), http.StatusUnprocessableEntity)
 		return
-	case errors.Is(err, er.AnotherUser):
+	case errors.As(err, &er.AnotherUser):
+		h.log.Debug("insert Order 409", "error", err.Error())
 		http.Error(w, er.AnotherUser.Error(), http.StatusConflict)
 		return
-	case errors.Is(err, er.ThisUser):
+	case errors.As(err, &er.ThisUser):
+		h.log.Debug("insert Order 200", "error", err.Error())
 		http.Error(w, er.ThisUser.Error(), http.StatusOK)
 		return
 	default:
+		h.log.Debug("insert Order 202", "error", err.Error())
 		http.Error(w, er.OrderAccepted.Error(), http.StatusAccepted)
 	}
 
