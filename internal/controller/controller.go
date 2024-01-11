@@ -12,7 +12,8 @@ type UseCase interface {
 	DoRegister(ctx context.Context, login, password string, r *http.Request) error
 	DoAuth(ctx context.Context, login, password string, r *http.Request) error
 	DoInsertOrder(ctx context.Context, login, order string) error
-	DoGetOrders(ctx context.Context, login string) ([]usecase.UseCase, error)
+	DoGetOrders(ctx context.Context, login string) ([]byte, error)
+	DoGetBalance(ctx context.Context, login string) (float32, float32, error)
 }
 
 type User struct {
@@ -30,13 +31,13 @@ type Handlers struct {
 	Withdrawals http.HandlerFunc
 }
 
-func New(uc *usecase.UseCase, log *slog.Logger) *Handlers {
+func New(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) *Handlers {
 	return &Handlers{
-		Balance:     NewBalance(uc, log).ServeHTTP,
-		GetOrders:   NewGetOrders(uc, log).ServeHTTP,
-		Login:       NewLogin(uc, log).ServeHTTP,
-		PostOrders:  NewPostOrders(uc, log).ServeHTTP,
-		Register:    NewRegister(uc, log).ServeHTTP,
+		Balance:     NewBalance(uc, log, er).ServeHTTP,
+		GetOrders:   NewGetOrders(uc, log, er).ServeHTTP,
+		Login:       NewLogin(uc, log, er).ServeHTTP,
+		PostOrders:  NewPostOrders(uc, log, er).ServeHTTP,
+		Register:    NewRegister(uc, log, er).ServeHTTP,
 		Withdraw:    NewWithdraw(uc, log).ServeHTTP,
 		Withdrawals: NewWithdrawals(uc, log).ServeHTTP,
 	}
