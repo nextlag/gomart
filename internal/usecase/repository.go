@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"time"
 
@@ -14,12 +15,12 @@ import (
 )
 
 type Storage struct {
-	*ErrStatus
+	*AllErr
 	*psql.Postgres
 	*slog.Logger
 }
 
-func NewStorage(er *ErrStatus, db *psql.Postgres, log *slog.Logger) *Storage {
+func NewStorage(er *AllErr, db *psql.Postgres, log *slog.Logger) *Storage {
 	return &Storage{er, db, log}
 }
 
@@ -64,21 +65,22 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 
 	bonusesWithdrawn := float32(0)
 
-	userOrder := &entity.Order{
-		Login:      login,
-		Order:      order,
-		UploadedAt: now.Format(time.RFC3339),
-		Status:     "NEW",
-		Bonuses:    &bonusesWithdrawn,
+	userOrder := &entity.Orders{
+		Login:            login,
+		Number:           order,
+		UploadedAt:       now.Format(time.RFC3339),
+		Status:           "NEW",
+		BonusesWithdrawn: bonusesWithdrawn,
 	}
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
+		s.Logger.Debug("InsertOrder", "no valid", validOrder, "status", "invalid order format")
 		return s.OrderFormat
 	}
 
 	db := bun.NewDB(s.DB, pgdialect.New())
 
-	var checkOrder entity.Order
+	var checkOrder entity.Orders
 
 	err := db.NewSelect().
 		Model(&checkOrder).
@@ -106,14 +108,13 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 	return nil
 }
 
-func (s *Storage) GetOrders(ctx context.Context, login string) ([]UseCase, error) {
-	var allOrders []UseCase
-	order := entity.Order{}
-
+func (s *Storage) GetOrders(ctx context.Context, login string) ([]byte, error) {
+	var allOrders []entity.Orders
 	db := bun.NewDB(s.Postgres.DB, pgdialect.New())
 
 	rows, err := db.NewSelect().
-		Model(&order).
+		TableExpr("orders").
+		Column("login", "number", "status", "accrual", "uploaded_at", "bonuses_withdrawn").
 		Where("login = ?", login).
 		Order("uploaded_at ASC").
 		Rows(ctx)
@@ -121,32 +122,57 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]UseCase, error
 		s.Logger.Error("error getting data", "GetOrders", err.Error())
 		return nil, err
 	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var en entity.Order
+		var en entity.Orders
 		err = rows.Scan(
 			&en.Login,
-			&en.Order,
+			&en.Number,
 			&en.Status,
-			&en.UploadedAt,
-			&en.Bonuses,
 			&en.Accrual,
+			&en.UploadedAt,
+			&en.BonusesWithdrawn,
 		)
 		if err != nil {
 			s.Logger.Error("error scanning data", "GetOrders", err.Error())
 			return nil, err
 		}
-		allOrders = append(allOrders, UseCase{
-			e: &entity.AllEntity{
-				Order: entity.Order{
-					Order:      en.Order,
-					UploadedAt: en.UploadedAt,
-					Status:     en.Status,
-					Accrual:    en.Accrual,
-				},
-			},
-		})
+
+		allOrders = append(allOrders, en)
 	}
-	return allOrders, nil
+
+	result, err := json.Marshal(allOrders)
+	if err != nil {
+		s.Logger.Error("error marshaling allOrders", "GetOrders method", err.Error())
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s *Storage) GetBalance(ctx context.Context, login string) (float32, float32, error) {
+	// Инициализация переменной для хранения баланса
+	var balance entity.User
+
+	// Создание экземпляра объекта для взаимодействия с базой данных
+	db := bun.NewDB(s.DB, pgdialect.New())
+
+	// Выполнение SELECT запроса к базе данных для получения бонусов по указанному логину
+	err := db.NewSelect().
+		Model(&balance).
+		ColumnExpr("balance", "withdrawn").
+		Where("login = ?", login).
+		Scan(ctx)
+	if err != nil {
+		s.Logger.Error("error while scanning data", "GetBalance", err.Error())
+		return 0, 0, err
+	}
+
+	// Возвращение результата (JSON) и отсутствия ошибок
+	return balance.Balance, balance.Withdrawn, nil
 }

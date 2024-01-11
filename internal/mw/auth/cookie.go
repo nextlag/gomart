@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -20,20 +21,21 @@ const LoginKey authContextKey = "login"
 // она обслуживает запросы и вставляет логин в контекст.
 // В противном случае она не позволяет продолжить выполнение и возвращает статус кода 401 (если пользователь не аутентифицирован),
 // или 500 (если произошла внутренняя ошибка сервера).
-func CookieAuthentication(uc *usecase.UseCase, log *slog.Logger) func(next http.Handler) http.Handler {
+func CookieAuthentication(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			login, err := GetCookie(uc, log, r)
+			login, err := GetCookie(uc, log, r, er)
 
 			switch {
-			case errors.Is(err, uc.Status().Token):
-				http.Error(w, uc.Status().Token.Error(), http.StatusUnauthorized)
-			case errors.Is(err, uc.Status().Auth):
+			case errors.Is(err, er.Token):
+				fmt.Println(err == er.Token)
+				http.Error(w, er.Token.Error(), http.StatusUnauthorized)
+			case errors.Is(err, er.Auth):
 				log.Error("error empty login", "error CookieAuthentication", err.Error())
-				http.Error(w, uc.Status().Auth.Error(), http.StatusUnauthorized)
+				http.Error(w, er.Auth.Error(), http.StatusUnauthorized)
 			case err != nil:
 				log.Error("error getting cookie", "error CookieAuthentication", err.Error())
-				http.Error(w, uc.Status().InternalServer.Error(), http.StatusUnauthorized)
+				http.Error(w, er.InternalServer.Error(), http.StatusUnauthorized)
 			default:
 				// Создаем новый контекст с установленным логином
 				ctx := context.WithValue(r.Context(), LoginKey, login)

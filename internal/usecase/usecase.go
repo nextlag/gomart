@@ -7,6 +7,7 @@ import (
 	"github.com/nextlag/gomart/internal/entity"
 )
 
+//go:generate mockgen -destination=mocks/mocks.go -package=mocks github.com/nextlag/gomart/internal/usecase Repository
 type Repository interface {
 	// Register - регистрация пользователя
 	Register(ctx context.Context, login, password string) error
@@ -15,19 +16,19 @@ type Repository interface {
 	// InsertOrder - загрузка номера заказа.
 	InsertOrder(ctx context.Context, login string, order string) error
 	// GetOrders - получение списка загруженных номеров заказов
-	GetOrders(ctx context.Context, login string) ([]UseCase, error)
+	GetOrders(ctx context.Context, login string) ([]byte, error)
+	// GetBalance - получение текущего баланса пользователя
+	GetBalance(ctx context.Context, login string) (float32, float32, error)
 }
 
 type UseCase struct {
-	r  Repository // interface Repository
-	e  *entity.AllEntity
-	er *ErrStatus
+	r Repository // interface Repository
+	e *entity.AllEntity
 }
 
 func New(r Repository) *UseCase {
 	e := &entity.AllEntity{}
-	er := &ErrStatus{}
-	return &UseCase{r, e, er}
+	return &UseCase{r, e}
 }
 
 func (uc *UseCase) GetEntity() *entity.AllEntity {
@@ -47,7 +48,12 @@ func (uc *UseCase) DoInsertOrder(ctx context.Context, login string, order string
 	return err
 }
 
-func (uc *UseCase) DoGetOrders(ctx context.Context, login string) ([]UseCase, error) {
+func (uc *UseCase) DoGetOrders(ctx context.Context, login string) ([]byte, error) {
 	orders, err := uc.r.GetOrders(ctx, login)
 	return orders, err
+}
+
+func (uc *UseCase) DoGetBalance(ctx context.Context, login string) (float32, float32, error) {
+	b, w, err := uc.r.GetBalance(ctx, login)
+	return b, w, err
 }
