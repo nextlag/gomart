@@ -19,6 +19,9 @@ Content-Type: application/json
 ### Get orders
 GET http://localhost:8080/api/user/orders
 
+### Get balance
+GET http://localhost:8080/api/user/balance
+
 
 ### POST authentication
 POST http://localhost:8080/api/user/login
@@ -36,4 +39,6 @@ POST http://localhost:8080/api/user/orders
 Host: localhost:8080
 Content-Type: text/plain
 
-12345678902
+#12345678903
+
+31722088874
