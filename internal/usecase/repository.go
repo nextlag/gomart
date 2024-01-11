@@ -121,12 +121,7 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]UseCase, error
 		s.Logger.Error("error getting data", "GetOrders", err.Error())
 		return nil, err
 	}
-	defer func() {
-		err = rows.Close()
-		if err != nil {
-			s.Logger.Error("error closing rows", "GetOrders", err.Error())
-		}
-	}()
+	defer rows.Close()
 
 	for rows.Next() {
 		var en entity.Order
