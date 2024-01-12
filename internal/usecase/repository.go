@@ -15,12 +15,12 @@ import (
 )
 
 type Storage struct {
-	*ErrStatus
+	*AllStatus
 	*psql.Postgres
 	*slog.Logger
 }
 
-func NewStorage(er *ErrStatus, db *psql.Postgres, log *slog.Logger) *Storage {
+func NewStorage(er *AllStatus, db *psql.Postgres, log *slog.Logger) *Storage {
 	return &Storage{er, db, log}
 }
 

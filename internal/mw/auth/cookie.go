@@ -24,16 +24,17 @@ func CookieAuthentication(uc *usecase.UseCase, log *slog.Logger) func(next http.
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			login, err := GetCookie(uc, log, r)
+			er := usecase.NewErr().GetError()
 
 			switch {
-			case errors.Is(err, uc.Status().Token):
-				http.Error(w, uc.Status().Token.Error(), http.StatusUnauthorized)
-			case errors.Is(err, uc.Status().Auth):
+			case errors.Is(err, er.Token):
+				http.Error(w, er.Token.Error(), http.StatusUnauthorized)
+			case errors.Is(err, er.Auth):
 				log.Error("error empty login", "error CookieAuthentication", err.Error())
-				http.Error(w, uc.Status().Auth.Error(), http.StatusUnauthorized)
+				http.Error(w, er.Auth.Error(), http.StatusUnauthorized)
 			case err != nil:
 				log.Error("error getting cookie", "error CookieAuthentication", err.Error())
-				http.Error(w, uc.Status().InternalServer.Error(), http.StatusUnauthorized)
+				http.Error(w, er.InternalServer.Error(), http.StatusUnauthorized)
 			default:
 				// Создаем новый контекст с установленным логином
 				ctx := context.WithValue(r.Context(), LoginKey, login)

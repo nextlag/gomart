@@ -19,7 +19,7 @@ func NewGetOrders(uc *usecase.UseCase, log *slog.Logger) *GetOrders {
 }
 
 func (h *GetOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	er := h.uc.Status()
+	er := usecase.NewErr().GetError()
 	login, _ := r.Context().Value(auth.LoginKey).(string)
 	orders, err := h.uc.DoGetOrders(r.Context(), login)
 	if err != nil {

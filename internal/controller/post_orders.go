@@ -21,7 +21,7 @@ func NewPostOrders(uc *usecase.UseCase, log *slog.Logger) *PostOrders {
 }
 
 func (h *PostOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	er := h.uc.Status()
+	er := usecase.NewErr().GetError()
 	// Получаем логин из контекста
 	login, _ := r.Context().Value(auth.LoginKey).(string)
 

@@ -19,15 +19,13 @@ type Repository interface {
 }
 
 type UseCase struct {
-	r  Repository // interface Repository
-	e  *entity.AllEntity
-	er *ErrStatus
+	r Repository // interface Repository
+	e *entity.AllEntity
 }
 
 func New(r Repository) *UseCase {
 	e := &entity.AllEntity{}
-	er := &ErrStatus{}
-	return &UseCase{r, e, er}
+	return &UseCase{r, e}
 }
 
 func (uc *UseCase) GetEntity() *entity.AllEntity {

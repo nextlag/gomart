@@ -34,8 +34,7 @@ func main() {
 	var (
 		log = logger.SetupLogger()
 		cfg = config.Cfg
-		r   usecase.UseCase
-		er  = r.Status()
+		er  = usecase.NewErr().GetError()
 	)
 
 	log.Debug("initialized flags",

@@ -21,7 +21,7 @@ func NewLogin(uc *usecase.UseCase, log *slog.Logger) *Login {
 
 func (h *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	user := h.uc.GetEntity().User
-	er := h.uc.Status()
+	er := usecase.NewErr().GetError()
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
