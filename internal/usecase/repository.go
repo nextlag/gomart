@@ -36,7 +36,7 @@ func (s *Storage) Register(ctx context.Context, login string, password string) e
 		Exec(ctx)
 
 	if err != nil {
-		s.Error("error writing data: ", "error usecase Register", err.Error())
+		s.Error("error writing data: ", "usecase Register", err.Error())
 		return err
 	}
 
@@ -101,7 +101,7 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 		Model(userOrder).
 		Exec(ctx)
 	if err != nil {
-		s.Error("error writing data: ", "error usecase InsertOrder", err.Error())
+		s.Error("error writing data: ", "usecase InsertOrder", err.Error())
 		return err
 	}
 
@@ -114,12 +114,12 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]byte, error) {
 
 	rows, err := db.NewSelect().
 		TableExpr("orders").
-		Column("login", "number", "status", "accrual", "uploaded_at", "bonuses_withdrawn").
+		Column("number", "status", "accrual", "uploaded_at").
 		Where("login = ?", login).
 		Order("uploaded_at ASC").
 		Rows(ctx)
 	if err != nil {
-		s.Logger.Error("error getting data", "GetOrders", err.Error())
+		s.Logger.Error("error getting data", "usecase GetOrders", err.Error())
 		return nil, err
 	}
 
@@ -132,15 +132,13 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]byte, error) {
 	for rows.Next() {
 		var en entity.Orders
 		err = rows.Scan(
-			&en.Login,
 			&en.Number,
 			&en.Status,
 			&en.Accrual,
 			&en.UploadedAt,
-			&en.BonusesWithdrawn,
 		)
 		if err != nil {
-			s.Logger.Error("error scanning data", "GetOrders", err.Error())
+			s.Logger.Error("error scanning data", "usecase GetOrders", err.Error())
 			return nil, err
 		}
 
@@ -149,7 +147,7 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]byte, error) {
 
 	result, err := json.Marshal(allOrders)
 	if err != nil {
-		s.Logger.Error("error marshaling allOrders", "GetOrders method", err.Error())
+		s.Logger.Error("error marshaling allOrders", "usecase GetOrders", err.Error())
 		return nil, err
 	}
 	return result, nil
@@ -169,10 +167,9 @@ func (s *Storage) GetBalance(ctx context.Context, login string) (float32, float3
 		Where("login = ?", login).
 		Scan(ctx)
 	if err != nil {
-		s.Logger.Error("error while scanning data", "GetBalance", err.Error())
+		s.Logger.Error("error while scanning data", "usecase GetBalance", err.Error())
 		return 0, 0, err
 	}
 
-	// Возвращение результата (JSON) и отсутствия ошибок
 	return balance.Balance, balance.Withdrawn, nil
 }

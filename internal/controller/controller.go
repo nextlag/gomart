@@ -16,11 +16,6 @@ type UseCase interface {
 	DoGetBalance(ctx context.Context, login string) (float32, float32, error)
 }
 
-type User struct {
-	Login    string `json:"login"`
-	Password string `json:"passwowrd"`
-}
-
 type Handlers struct {
 	Balance     http.HandlerFunc
 	GetOrders   http.HandlerFunc
@@ -41,4 +36,14 @@ func New(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) *Handlers {
 		Withdraw:    NewWithdraw(uc, log).ServeHTTP,
 		Withdrawals: NewWithdrawals(uc, log).ServeHTTP,
 	}
+}
+
+type User struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
+
+type userBalance struct {
+	Balance   float32 `json:"current"`
+	Withdrawn float32 `json:"withdrawn"`
 }

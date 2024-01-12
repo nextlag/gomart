@@ -28,10 +28,6 @@ func (h *Balance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error get balance", http.StatusInternalServerError)
 		return
 	}
-	type userBalance struct {
-		Balance   float32
-		Withdrawn float32
-	}
 	user := userBalance{
 		Balance:   balance,
 		Withdrawn: withdrawn,
