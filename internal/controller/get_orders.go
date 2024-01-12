@@ -31,12 +31,6 @@ func (h *GetOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err != nil {
-		h.log.Error("error encoding orders to JSON", err)
-		http.Error(w, h.er.InternalServer.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(orders)

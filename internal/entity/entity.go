@@ -14,7 +14,7 @@ type User struct {
 
 // Order - Структура, предназначенная для вставки данных в таблицу заказов.
 type Orders struct {
-	Login            string  `json:"login"`
+	Login            string  `json:"-"`
 	Number           string  `json:"number"`
 	Status           string  `json:"status"`
 	Accrual          float32 `json:"accrual"`
