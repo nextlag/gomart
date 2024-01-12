@@ -53,7 +53,6 @@ func (h *PostOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, h.er.ThisUser.Error(), http.StatusOK)
 		return
 	default:
-		h.log.Debug("insert Order 202", "error", err.Error())
 		http.Error(w, h.er.OrderAccepted.Error(), http.StatusAccepted)
 	}
 
