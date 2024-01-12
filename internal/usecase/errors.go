@@ -4,10 +4,6 @@ import (
 	"errors"
 )
 
-type ErrUsecase interface {
-	GetError() *ErrStatus
-}
-
 type ErrorAuth struct {
 	Auth  error // Auth ошибка аутентификации
 	Token error // Token неверная сигнатура токена
@@ -38,23 +34,16 @@ type ErrGetOrders struct {
 	NoContent error // NoContent status 204: нет данных для ответа
 }
 
-type AllStatus struct {
+type AllErr struct {
 	*ErrorAuth
 	*ErrCommon
 	*ErrAuthentication
 	*ErrPostOrder
 	*ErrGetOrders
 }
-type ErrStatus struct {
-	er ErrUsecase
-}
 
-func NewErr() *ErrStatus {
-	return &ErrStatus{}
-}
-
-func (er ErrStatus) GetError() *AllStatus {
-	return &AllStatus{
+func NewErr() *AllErr {
+	return &AllErr{
 		&ErrorAuth{
 			Auth:  errors.New("authentication error"),
 			Token: errors.New("signature is invalid"),

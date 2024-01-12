@@ -18,23 +18,23 @@ import (
 type Register struct {
 	uc  *usecase.UseCase // UseCase для обработки бизнес-логики регистрации
 	log *slog.Logger
+	er  *usecase.AllErr
 }
 
 // NewRegister создает новый экземпляр контроллера Register.
-func NewRegister(uc *usecase.UseCase, log *slog.Logger) *Register {
-	return &Register{uc: uc, log: log}
+func NewRegister(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) *Register {
+	return &Register{uc: uc, log: log, er: er}
 }
 
 // ServeHTTP обрабатывает HTTP-запросы для регистрации пользователя.
 func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	user := h.uc.GetEntity().User
-	er := usecase.NewErr().GetError()
 	// Декодируем JSON-данные из тела запроса в структуру Credentials
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&user); err != nil {
 		h.log.Error("Decode JSON", "Login", user.Login, "error Register handler", err.Error())
-		http.Error(w, er.DecodeJSON.Error(), http.StatusBadRequest)
+		http.Error(w, h.er.DecodeJSON.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -42,7 +42,7 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case len(user.Login) == 0:
 		h.log.Info("error: empty login")
-		http.Error(w, er.Request.Error(), http.StatusBadRequest)
+		http.Error(w, h.er.Request.Error(), http.StatusBadRequest)
 		return
 	case len(user.Password) == 0:
 		h.log.Info("generating password")
@@ -62,7 +62,7 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "login is already token", http.StatusConflict)
 		default:
 			// В противном случае возвращаем внутреннюю ошибку сервера
-			http.Error(w, er.InternalServer.Error(), http.StatusInternalServerError)
+			http.Error(w, h.er.InternalServer.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -71,7 +71,7 @@ func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	jwt, err := auth.SetAuth(user.Login, h.log, w, r)
 	if err != nil {
 		h.log.Error("can't set cookie: ", "error controller|register", err.Error())
-		http.Error(w, er.InternalServer.Error(), http.StatusInternalServerError)
+		http.Error(w, h.er.InternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
 	h.log.Debug("authentication", "login", user.Login, "token", jwt)

@@ -14,14 +14,14 @@ import (
 type PostOrders struct {
 	uc  *usecase.UseCase
 	log *slog.Logger
+	er  *usecase.AllErr
 }
 
-func NewPostOrders(uc *usecase.UseCase, log *slog.Logger) *PostOrders {
-	return &PostOrders{uc: uc, log: log}
+func NewPostOrders(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) *PostOrders {
+	return &PostOrders{uc: uc, log: log, er: er}
 }
 
 func (h *PostOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	er := usecase.NewErr().GetError()
 	// Получаем логин из контекста
 	login, _ := r.Context().Value(auth.LoginKey).(string)
 
@@ -30,31 +30,31 @@ func (h *PostOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	order := string(body)
 	switch {
 	case order == "":
-		http.Error(w, er.RequestFormat.Error(), http.StatusBadRequest)
+		http.Error(w, h.er.RequestFormat.Error(), http.StatusBadRequest)
 		return
 	case err != nil:
 		h.log.Error("body reading error", "error PostOrder handler", err.Error())
-		http.Error(w, er.InternalServer.Error(), http.StatusInternalServerError)
+		http.Error(w, h.er.InternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = h.uc.DoInsertOrder(r.Context(), login, order)
 	switch {
-	case errors.As(err, &er.OrderFormat):
+	case errors.Is(err, h.er.OrderFormat):
 		h.log.Debug("insert Order 422", "error", err.Error())
-		http.Error(w, er.OrderFormat.Error(), http.StatusUnprocessableEntity)
+		http.Error(w, h.er.OrderFormat.Error(), http.StatusUnprocessableEntity)
 		return
-	case errors.As(err, &er.AnotherUser):
+	case errors.Is(err, h.er.AnotherUser):
 		h.log.Debug("insert Order 409", "error", err.Error())
-		http.Error(w, er.AnotherUser.Error(), http.StatusConflict)
+		http.Error(w, h.er.AnotherUser.Error(), http.StatusConflict)
 		return
-	case errors.As(err, &er.ThisUser):
+	case errors.Is(err, h.er.ThisUser):
 		h.log.Debug("insert Order 200", "error", err.Error())
-		http.Error(w, er.ThisUser.Error(), http.StatusOK)
+		http.Error(w, h.er.ThisUser.Error(), http.StatusOK)
 		return
 	default:
 		h.log.Debug("insert Order 202", "error", err.Error())
-		http.Error(w, er.OrderAccepted.Error(), http.StatusAccepted)
+		http.Error(w, h.er.OrderAccepted.Error(), http.StatusAccepted)
 	}
 
 	// Обработка успешного запроса

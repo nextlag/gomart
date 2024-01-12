@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"time"
 
@@ -15,12 +14,12 @@ import (
 )
 
 type Storage struct {
-	*AllStatus
+	*AllErr
 	*psql.Postgres
 	*slog.Logger
 }
 
-func NewStorage(er *AllStatus, db *psql.Postgres, log *slog.Logger) *Storage {
+func NewStorage(er *AllErr, db *psql.Postgres, log *slog.Logger) *Storage {
 	return &Storage{er, db, log}
 }
 
@@ -75,7 +74,7 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
 		s.Logger.Debug("InsertOrder", "no valid", validOrder, "status", "invalid order format")
-		return errors.New("invalid order format")
+		return s.OrderFormat
 	}
 
 	db := bun.NewDB(s.DB, pgdialect.New())

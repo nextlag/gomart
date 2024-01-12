@@ -12,30 +12,30 @@ import (
 type GetOrders struct {
 	uc  *usecase.UseCase
 	log *slog.Logger
+	er  *usecase.AllErr
 }
 
-func NewGetOrders(uc *usecase.UseCase, log *slog.Logger) *GetOrders {
-	return &GetOrders{uc: uc, log: log}
+func NewGetOrders(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) *GetOrders {
+	return &GetOrders{uc: uc, log: log, er: er}
 }
 
 func (h *GetOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	er := usecase.NewErr().GetError()
 	login, _ := r.Context().Value(auth.LoginKey).(string)
 	orders, err := h.uc.DoGetOrders(r.Context(), login)
 	if err != nil {
-		h.log.Debug("GetOrders", orders, er.GetOrders.Error())
-		http.Error(w, er.GetOrders.Error(), http.StatusInternalServerError)
+		h.log.Debug("GetOrders", orders, h.er.GetOrders.Error())
+		http.Error(w, h.er.GetOrders.Error(), http.StatusInternalServerError)
 		return
 	}
 	if len(orders) == 0 {
-		http.Error(w, er.NoContent.Error(), http.StatusNoContent)
+		http.Error(w, h.er.NoContent.Error(), http.StatusNoContent)
 		return
 	}
 
 	jsonResponse, err := json.Marshal(orders)
 	if err != nil {
 		h.log.Error("error encoding orders to JSON", err)
-		http.Error(w, er.InternalServer.Error(), http.StatusInternalServerError)
+		http.Error(w, h.er.InternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
 

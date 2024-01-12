@@ -30,13 +30,13 @@ type Handlers struct {
 	Withdrawals http.HandlerFunc
 }
 
-func New(uc *usecase.UseCase, log *slog.Logger) *Handlers {
+func New(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) *Handlers {
 	return &Handlers{
 		Balance:     NewBalance(uc, log).ServeHTTP,
-		GetOrders:   NewGetOrders(uc, log).ServeHTTP,
-		Login:       NewLogin(uc, log).ServeHTTP,
-		PostOrders:  NewPostOrders(uc, log).ServeHTTP,
-		Register:    NewRegister(uc, log).ServeHTTP,
+		GetOrders:   NewGetOrders(uc, log, er).ServeHTTP,
+		Login:       NewLogin(uc, log, er).ServeHTTP,
+		PostOrders:  NewPostOrders(uc, log, er).ServeHTTP,
+		Register:    NewRegister(uc, log, er).ServeHTTP,
 		Withdraw:    NewWithdraw(uc, log).ServeHTTP,
 		Withdrawals: NewWithdrawals(uc, log).ServeHTTP,
 	}
