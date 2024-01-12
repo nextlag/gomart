@@ -33,7 +33,7 @@ type Handlers struct {
 
 func New(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) *Handlers {
 	return &Handlers{
-		Balance:     NewBalance(uc, log).ServeHTTP,
+		Balance:     NewBalance(uc, log, er).ServeHTTP,
 		GetOrders:   NewGetOrders(uc, log, er).ServeHTTP,
 		Login:       NewLogin(uc, log, er).ServeHTTP,
 		PostOrders:  NewPostOrders(uc, log, er).ServeHTTP,

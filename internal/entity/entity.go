@@ -8,18 +8,18 @@ type Entity interface {
 type User struct {
 	Login     string  `json:"login"`
 	Password  string  `json:"password"`
-	Balance   float32 `json:"current"`
+	Balance   float32 `json:"balance"`
 	Withdrawn float32 `json:"withdrawn"`
 }
 
 // Order - Структура, предназначенная для вставки данных в таблицу заказов.
 type Orders struct {
-	Login            string  `json:"-"`
+	Login            string  `json:"login"`
 	Number           string  `json:"number"`
 	Status           string  `json:"status"`
 	Accrual          float32 `json:"accrual"`
 	UploadedAt       string  `json:"uploaded_at"`
-	BonusesWithdrawn float32 `json:"order_bonuses_withdrawn"`
+	BonusesWithdrawn float32 `json:"bonuses_withdrawn"`
 }
 
 // cтруктура, предназначенная для возврата клиенту данных о заказах с снятыми бонусами.
