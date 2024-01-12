@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 
@@ -9,10 +8,10 @@ import (
 )
 
 type UseCase interface {
-	DoRegister(ctx context.Context, login, password string, r *http.Request) error
-	DoAuth(ctx context.Context, login, password string, r *http.Request) error
-	DoInsertOrder(ctx context.Context, login, order string) error
-	DoGetOrders(ctx context.Context, login string) ([]usecase.UseCase, error)
+	// DoRegister(ctx context.Context, login, password string, r *http.Request) error
+	// DoAuth(ctx context.Context, login, password string, r *http.Request) error
+	// DoInsertOrder(ctx context.Context, login, order string) error
+	// DoGetOrders(ctx context.Context, login string) ([]entity.Order, error)
 }
 
 type User struct {

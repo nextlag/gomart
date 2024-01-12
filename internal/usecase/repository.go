@@ -107,8 +107,8 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 	return nil
 }
 
-func (s *Storage) GetOrders(ctx context.Context, login string) ([]UseCase, error) {
-	var allOrders []UseCase
+func (s *Storage) GetOrders(ctx context.Context, login string) ([]entity.Order, error) {
+	var allOrders []entity.Order
 	order := entity.Order{}
 
 	db := bun.NewDB(s.Postgres.DB, pgdialect.New())
@@ -142,16 +142,17 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]UseCase, error
 			s.Logger.Error("error scanning data", "GetOrders", err.Error())
 			return nil, err
 		}
-		allOrders = append(allOrders, UseCase{
-			e: &entity.AllEntity{
-				Order: entity.Order{
-					Order:      en.Order,
-					UploadedAt: en.UploadedAt,
-					Status:     en.Status,
-					Accrual:    en.Accrual,
-				},
-			},
+
+		// Логируем данные, чтобы проверить, что они получены корректно
+		s.Logger.Debug("Got order", "Order", en.Order, "Status", en.Status, "UploadedAt", en.UploadedAt)
+
+		allOrders = append(allOrders, entity.Order{
+			Order:      en.Order,
+			UploadedAt: en.UploadedAt,
+			Status:     en.Status,
+			Accrual:    en.Accrual,
 		})
 	}
+	s.Logger.Debug("allOrders", "Orders", allOrders)
 	return allOrders, nil
 }
