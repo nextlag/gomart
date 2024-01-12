@@ -61,10 +61,13 @@ func (s *Storage) Auth(ctx context.Context, login, password string) error {
 }
 
 func (s *Storage) InsertOrder(ctx context.Context, login string, order string) error {
+	// Получение текущей даты и времени
 	now := time.Now()
 
+	// Инициализация переменной для хранения начисленных бонусов
 	bonusesWithdrawn := float32(0)
 
+	// Создание объекта заказа
 	userOrder := &entity.Orders{
 		Login:            login,
 		Number:           order,
@@ -72,16 +75,19 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 		Status:           "NEW",
 		BonusesWithdrawn: &bonusesWithdrawn,
 	}
+
+	// Проверка валидности формата заказа с использованием функции CheckValidOrder
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
 		s.Logger.Debug("InsertOrder", "no valid", validOrder, "status", "invalid order format")
 		return s.OrderFormat
 	}
 
+	// Создание экземпляра объекта для взаимодействия с базой данных
 	db := bun.NewDB(s.DB, pgdialect.New())
 
+	// Поиск заказа в базе данных по номеру заказа
 	var checkOrder entity.Orders
-
 	err := db.NewSelect().
 		Model(&checkOrder).
 		Where(`"order" = ?`, order).
@@ -96,22 +102,27 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 		return s.AnotherUser
 	}
 
-	// Заказ не существует, вставьте его
+	// Заказ не существует, вставьте его в базу данных
 	_, err = db.NewInsert().
 		Model(userOrder).
 		Exec(ctx)
 	if err != nil {
-		s.Error("error writing data: ", "error usecase InsertOrder", err.Error())
+		s.Error("ошибка при записи данных: ", "ошибка в usecase InsertOrder", err.Error())
 		return err
 	}
 
+	// Возвращение отсутствия ошибок
 	return nil
 }
 
 func (s *Storage) GetOrders(ctx context.Context, login string) ([]byte, error) {
+	// Инициализация среза для хранения заказов
 	var allOrders []entity.Orders
+
+	// Создание экземпляра объекта для взаимодействия с базой данных
 	db := bun.NewDB(s.Postgres.DB, pgdialect.New())
 
+	// Выполнение SELECT запроса к базе данных для получения заказов по указанному логину
 	rows, err := db.NewSelect().
 		TableExpr("orders").
 		Column("login", "number", "status", "accrual", "uploaded_at", "bonuses_withdrawn").
@@ -119,16 +130,18 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]byte, error) {
 		Order("uploaded_at ASC").
 		Rows(ctx)
 	if err != nil {
-		s.Logger.Error("error getting data", "GetOrders", err.Error())
+		s.Logger.Error("ошибка при получении данных", "GetOrders", err.Error())
 		return nil, err
 	}
 
+	// Проверка наличия ошибок после выполнения запроса
 	err = rows.Err()
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
+	// Итерация по результатам запроса и сканирование данных в структуру Orders
 	for rows.Next() {
 		var en entity.Orders
 		err = rows.Scan(
@@ -140,17 +153,21 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]byte, error) {
 			&en.BonusesWithdrawn,
 		)
 		if err != nil {
-			s.Logger.Error("error scanning data", "GetOrders", err.Error())
+			s.Logger.Error("ошибка при сканировании данных", "GetOrders", err.Error())
 			return nil, err
 		}
 
+		// Добавление полученного заказа в срез allOrders
 		allOrders = append(allOrders, en)
 	}
 
+	// Преобразование среза заказов в формат JSON
 	result, err := json.Marshal(allOrders)
 	if err != nil {
-		s.Logger.Error("error marshaling allOrders", "GetOrders method", err.Error())
+		s.Logger.Error("ошибка при маршалинге allOrders", "GetOrders method", err.Error())
 		return nil, err
 	}
+
+	// Возвращение результата (JSON) и отсутствия ошибок
 	return result, nil
 }

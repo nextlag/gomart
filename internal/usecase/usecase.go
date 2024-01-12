@@ -7,6 +7,7 @@ import (
 	"github.com/nextlag/gomart/internal/entity"
 )
 
+//go:generate mockgen -destination=mocks/mocks.go -package=mocks github.com/nextlag/gomart/internal/usecase Repository
 type Repository interface {
 	// Register - регистрация пользователя
 	Register(ctx context.Context, login, password string) error
