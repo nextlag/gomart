@@ -21,7 +21,7 @@ const (
 		"order" VARCHAR(255) PRIMARY KEY,
 		status VARCHAR(255),
 		uploaded_at TIMESTAMP,
-		bonuses FLOAT,
+		bonuses_withdrawn FLOAT,
 		accrual FLOAT
 	);`
 )

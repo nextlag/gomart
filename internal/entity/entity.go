@@ -5,13 +5,13 @@ type Entity interface {
 }
 
 // Order - Структура, предназначенная для вставки данных в таблицу заказов.
-type Order struct {
-	Login      string   `bun:"login" json:"-"`
-	Order      string   `bun:"order" json:"order"`
-	Status     string   `bun:"status" json:"order_status"`
-	UploadedAt string   `bun:"uploaded_at" json:"uploaded_at"`
-	Bonuses    *float32 `bun:"bonuses" json:"bonuses_withdrawn"`
-	Accrual    *float32 `bun:"accrual" json:"order_accrual"`
+type Orders struct {
+	Login            string  `bun:"type:varchar(255)"`
+	Order            string  `bun:"type:varchar(255),unique"`
+	Status           string  `bun:"type:varchar(255)"`
+	UploadedAt       string  `bun:"type:timestamp"`
+	BonusesWithdrawn float32 `bun:"type:float"`
+	Accrual          float32 `bun:"type:float"`
 }
 
 // Структура, предназначенная для возврата клиенту данных о заказах с снятыми бонусами
@@ -37,7 +37,7 @@ type Points struct {
 }
 
 type AllEntity struct {
-	Order
+	Orders
 	User
 	Points
 	OWSB

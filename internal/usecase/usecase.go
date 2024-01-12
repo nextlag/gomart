@@ -15,7 +15,7 @@ type Repository interface {
 	// InsertOrder - загрузка номера заказа.
 	InsertOrder(ctx context.Context, login string, order string) error
 	// GetOrders - получение списка загруженных номеров заказов
-	GetOrders(ctx context.Context, login string) ([]entity.Order, error)
+	GetOrders(ctx context.Context, login string) ([]entity.Orders, error)
 }
 
 type UseCase struct {
@@ -45,7 +45,7 @@ func (uc *UseCase) DoInsertOrder(ctx context.Context, login string, order string
 	return err
 }
 
-func (uc *UseCase) DoGetOrders(ctx context.Context, login string) ([]entity.Order, error) {
+func (uc *UseCase) DoGetOrders(ctx context.Context, login string) ([]entity.Orders, error) {
 	orders, err := uc.r.GetOrders(ctx, login)
 	return orders, err
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/nextlag/gomart/internal/entity"
 )
 
-func GetAccrual(order entity.Order, cfg config.HTTPServer, log *slog.Logger) entity.Points {
+func GetAccrual(order entity.Orders, cfg config.HTTPServer, log *slog.Logger) entity.Points {
 	client := resty.New().SetBaseURL(cfg.Accrual)
 	var orderUpdate entity.Points
 

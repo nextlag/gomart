@@ -64,12 +64,12 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 
 	bonusesWithdrawn := float32(0)
 
-	userOrder := &entity.Order{
-		Login:      login,
-		Order:      order,
-		UploadedAt: now.Format(time.RFC3339),
-		Status:     "NEW",
-		Bonuses:    &bonusesWithdrawn,
+	userOrder := &entity.Orders{
+		Login:            login,
+		Order:            order,
+		UploadedAt:       now.Format(time.RFC3339),
+		Status:           "NEW",
+		BonusesWithdrawn: bonusesWithdrawn,
 	}
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
@@ -79,7 +79,7 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 
 	db := bun.NewDB(s.DB, pgdialect.New())
 
-	var checkOrder entity.Order
+	var checkOrder entity.Orders
 
 	err := db.NewSelect().
 		Model(&checkOrder).
@@ -107,9 +107,9 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 	return nil
 }
 
-func (s *Storage) GetOrders(ctx context.Context, login string) ([]entity.Order, error) {
-	var allOrders []entity.Order
-	order := entity.Order{}
+func (s *Storage) GetOrders(ctx context.Context, login string) ([]entity.Orders, error) {
+	var allOrders []entity.Orders
+	order := entity.Orders{}
 
 	db := bun.NewDB(s.Postgres.DB, pgdialect.New())
 
@@ -129,13 +129,13 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]entity.Order, 
 	defer rows.Close()
 
 	for rows.Next() {
-		var en entity.Order
+		var en entity.Orders
 		err = rows.Scan(
 			&en.Login,
 			&en.Order,
 			&en.Status,
 			&en.UploadedAt,
-			&en.Bonuses,
+			&en.BonusesWithdrawn,
 			&en.Accrual,
 		)
 		if err != nil {
@@ -146,7 +146,7 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]entity.Order, 
 		// Логируем данные, чтобы проверить, что они получены корректно
 		s.Logger.Debug("Got order", "Order", en.Order, "Status", en.Status, "UploadedAt", en.UploadedAt)
 
-		allOrders = append(allOrders, entity.Order{
+		allOrders = append(allOrders, entity.Orders{
 			Order:      en.Order,
 			UploadedAt: en.UploadedAt,
 			Status:     en.Status,
