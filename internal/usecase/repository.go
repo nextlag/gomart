@@ -66,10 +66,10 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 
 	userOrder := &entity.Orders{
 		Login:            login,
-		Order:            order,
+		Number:           order,
 		UploadedAt:       now.Format(time.RFC3339),
 		Status:           "NEW",
-		BonusesWithdrawn: bonusesWithdrawn,
+		BonusesWithdrawn: &bonusesWithdrawn,
 	}
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
@@ -132,11 +132,11 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]entity.Orders,
 		var en entity.Orders
 		err = rows.Scan(
 			&en.Login,
-			&en.Order,
+			&en.Number,
 			&en.Status,
+			&en.Accrual,
 			&en.UploadedAt,
 			&en.BonusesWithdrawn,
-			&en.Accrual,
 		)
 		if err != nil {
 			s.Logger.Error("error scanning data", "GetOrders", err.Error())
@@ -144,10 +144,10 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]entity.Orders,
 		}
 
 		// Логируем данные, чтобы проверить, что они получены корректно
-		s.Logger.Debug("Got order", "Order", en.Order, "Status", en.Status, "UploadedAt", en.UploadedAt)
+		s.Logger.Debug("Got order", "login", en.Login, "Number", en.Number, "Status", en.Status, "UploadedAt", en.UploadedAt)
 
 		allOrders = append(allOrders, entity.Orders{
-			Order:      en.Order,
+			Number:     en.Number,
 			UploadedAt: en.UploadedAt,
 			Status:     en.Status,
 			Accrual:    en.Accrual,

@@ -6,12 +6,12 @@ type Entity interface {
 
 // Order - Структура, предназначенная для вставки данных в таблицу заказов.
 type Orders struct {
-	Login            string  `bun:"type:varchar(255)"`
-	Order            string  `bun:"type:varchar(255),unique"`
-	Status           string  `bun:"type:varchar(255)"`
-	UploadedAt       string  `bun:"type:timestamp"`
-	BonusesWithdrawn float32 `bun:"type:float"`
-	Accrual          float32 `bun:"type:float"`
+	Login            string   `json:"-"`
+	Number           string   `json:"number"`
+	Status           string   `json:"status"`
+	Accrual          *float32 `json:"accrual"`
+	UploadedAt       string   `json:"uploaded_at"`
+	BonusesWithdrawn *float32 `json:"order_bonuses_withdrawn"`
 }
 
 // Структура, предназначенная для возврата клиенту данных о заказах с снятыми бонусами

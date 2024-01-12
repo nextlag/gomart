@@ -22,7 +22,7 @@ func GetAccrual(order entity.Orders, cfg config.HTTPServer, log *slog.Logger) en
 	for elapsed := time.Since(startTime); elapsed < maxWaitTime; elapsed = time.Since(startTime) {
 		resp, err := client.R().
 			SetResult(&orderUpdate).
-			Get("/api/orders/" + order.Order)
+			Get("/api/orders/" + order.Number)
 
 		if err != nil {
 			log.Error("error when sending a GET request to the accrual system:", "error GetAccrual", err.Error())

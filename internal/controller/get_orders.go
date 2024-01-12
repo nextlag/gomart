@@ -23,7 +23,7 @@ func (h *GetOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	login, _ := r.Context().Value(auth.LoginKey).(string)
 	orders, err := h.uc.DoGetOrders(r.Context(), login)
 	if err != nil {
-		h.log.Debug("GetOrders", orders, h.er.GetOrders.Error())
+		h.log.Debug("GetOrders handler", "orders", orders, "error", h.er.GetOrders.Error())
 		http.Error(w, h.er.GetOrders.Error(), http.StatusInternalServerError)
 		return
 	}
