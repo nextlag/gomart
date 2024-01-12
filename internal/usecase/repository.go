@@ -122,6 +122,7 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]byte, error) {
 		s.Logger.Error("error getting data", "GetOrders", err.Error())
 		return nil, err
 	}
+
 	err = rows.Err()
 	if err != nil {
 		return nil, err
@@ -148,7 +149,7 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]byte, error) {
 
 	result, err := json.Marshal(allOrders)
 	if err != nil {
-		s.Logger.Error("can't marshal allOrders", "GetOrders method", err.Error())
+		s.Logger.Error("error marshaling allOrders", "GetOrders method", err.Error())
 		return nil, err
 	}
 	return result, nil
