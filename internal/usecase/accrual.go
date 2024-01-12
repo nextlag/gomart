@@ -10,9 +10,9 @@ import (
 	"github.com/nextlag/gomart/internal/entity"
 )
 
-func GetAccrual(order entity.Orders, cfg config.HTTPServer, log *slog.Logger) entity.Points {
+func GetAccrual(order entity.Orders, cfg config.HTTPServer, log *slog.Logger) entity.OrderUpdateFromAccural {
 	client := resty.New().SetBaseURL(cfg.Accrual)
-	var orderUpdate entity.Points
+	var orderUpdate entity.OrderUpdateFromAccural
 
 	maxWaitTime := 5 * time.Minute  // Максимальное время ожидания
 	waitInterval := 3 * time.Second // Интервал ожидания

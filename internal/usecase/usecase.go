@@ -17,6 +17,8 @@ type Repository interface {
 	InsertOrder(ctx context.Context, login string, order string) error
 	// GetOrders - получение списка загруженных номеров заказов
 	GetOrders(ctx context.Context, login string) ([]byte, error)
+	// GetBalance - получение текущего баланса пользователя
+	GetBalance(ctx context.Context, login string) ([]byte, error)
 }
 
 type UseCase struct {
@@ -49,4 +51,9 @@ func (uc *UseCase) DoInsertOrder(ctx context.Context, login string, order string
 func (uc *UseCase) DoGetOrders(ctx context.Context, login string) ([]byte, error) {
 	orders, err := uc.r.GetOrders(ctx, login)
 	return orders, err
+}
+
+func (uc *UseCase) DoGetBalance(ctx context.Context, login string) ([]byte, error) {
+	balance, err := uc.r.GetBalance(ctx, login)
+	return balance, err
 }
