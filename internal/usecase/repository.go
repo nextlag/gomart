@@ -144,7 +144,7 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]entity.Orders,
 		}
 
 		// Логируем данные, чтобы проверить, что они получены корректно
-		s.Logger.Debug("Got order", "login", en.Login, "Number", en.Number, "Status", en.Status, "UploadedAt", en.UploadedAt)
+		s.Logger.Debug("Got order", "login", en.Login, "Number", en.Number, "Status", en.Status, "Accrual", en.Accrual, "UploadedAt", en.UploadedAt)
 
 		allOrders = append(allOrders, entity.Orders{
 			Number:     en.Number,
@@ -153,6 +153,6 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]entity.Orders,
 			Accrual:    en.Accrual,
 		})
 	}
-	s.Logger.Debug("allOrders", "Orders", allOrders)
+	s.Logger.Info("allOrders", "Output", allOrders)
 	return allOrders, nil
 }
