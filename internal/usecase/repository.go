@@ -118,9 +118,12 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]UseCase, error
 		Where("login = ?", login).
 		Order("uploaded_at ASC").
 		Rows(ctx)
-	rows.Err()
 	if err != nil {
 		s.Logger.Error("error getting data", "GetOrders", err.Error())
+		return nil, err
+	}
+	err = rows.Err()
+	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
