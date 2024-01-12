@@ -13,7 +13,7 @@ type UseCase interface {
 	DoAuth(ctx context.Context, login, password string, r *http.Request) error
 	DoInsertOrder(ctx context.Context, login, order string) error
 	DoGetOrders(ctx context.Context, login string) ([]byte, error)
-	DoGetBalance(ctx context.Context, login string) ([]byte, error)
+	DoGetBalance(ctx context.Context, login string) (float32, float32, error)
 }
 
 type User struct {

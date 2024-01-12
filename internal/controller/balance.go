@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -20,13 +21,26 @@ func NewBalance(uc UseCase, log *slog.Logger, er *usecase.AllErr) *Balance {
 
 func (h *Balance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	login, _ := r.Context().Value(auth.LoginKey).(string)
-	balance, err := h.uc.DoGetBalance(r.Context(), login)
+	balance, withdrawn, err := h.uc.DoGetBalance(r.Context(), login)
+	h.log.Debug("GetBalance handler", "balance", balance, "withdrawn", withdrawn)
 	if err != nil {
-		h.log.Debug("GetBalance handler", "balance", balance, "error", err.Error())
+		h.log.Error("GetBalance handler", "balance", balance, "withdrawn", withdrawn, "error", err.Error())
 		http.Error(w, "error get balance", http.StatusInternalServerError)
+		return
+	}
+	type userBalance struct {
+		Balance   float32
+		Withdrawn float32
+	}
+	user := userBalance{
+		Balance:   balance,
+		Withdrawn: withdrawn,
+	}
+	result, err := json.Marshal(user)
+	if err != nil {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(balance)
+	w.Write(result)
 }

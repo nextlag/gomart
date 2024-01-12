@@ -155,7 +155,7 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]byte, error) {
 	return result, nil
 }
 
-func (s *Storage) GetBalance(ctx context.Context, login string) ([]byte, error) {
+func (s *Storage) GetBalance(ctx context.Context, login string) (float32, float32, error) {
 	// Инициализация переменной для хранения баланса
 	var balance entity.User
 
@@ -165,21 +165,14 @@ func (s *Storage) GetBalance(ctx context.Context, login string) ([]byte, error) 
 	// Выполнение SELECT запроса к базе данных для получения бонусов по указанному логину
 	err := db.NewSelect().
 		Model(&balance).
-		Column("balance", "withdrawn").
+		ColumnExpr("balance", "withdrawn").
 		Where("login = ?", login).
 		Scan(ctx)
 	if err != nil {
 		s.Logger.Error("error while scanning data", "GetBalance", err.Error())
-		return nil, err
-	}
-
-	// Преобразование данных в формат JSON
-	result, err := json.Marshal(balance)
-	if err != nil {
-		s.Logger.Error("error when marshaling balance", "GetBalance", err.Error())
-		return nil, err
+		return 0, 0, err
 	}
 
 	// Возвращение результата (JSON) и отсутствия ошибок
-	return result, nil
+	return balance.Balance, balance.Withdrawn, nil
 }
