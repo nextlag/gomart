@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"time"
 
@@ -107,14 +108,13 @@ func (s *Storage) InsertOrder(ctx context.Context, login string, order string) e
 	return nil
 }
 
-func (s *Storage) GetOrders(ctx context.Context, login string) ([]entity.Orders, error) {
+func (s *Storage) GetOrders(ctx context.Context, login string) ([]byte, error) {
 	var allOrders []entity.Orders
-	order := entity.Orders{}
-
 	db := bun.NewDB(s.Postgres.DB, pgdialect.New())
 
 	rows, err := db.NewSelect().
-		Model(&order).
+		TableExpr("orders").
+		Column("login", "number", "status", "accrual", "uploaded_at", "bonuses_withdrawn").
 		Where("login = ?", login).
 		Order("uploaded_at ASC").
 		Rows(ctx)
@@ -143,16 +143,13 @@ func (s *Storage) GetOrders(ctx context.Context, login string) ([]entity.Orders,
 			return nil, err
 		}
 
-		// Логируем данные, чтобы проверить, что они получены корректно
-		s.Logger.Debug("Got order", "login", en.Login, "Number", en.Number, "Status", en.Status, "Accrual", en.Accrual, "UploadedAt", en.UploadedAt)
-
-		allOrders = append(allOrders, entity.Orders{
-			Number:     en.Number,
-			UploadedAt: en.UploadedAt,
-			Status:     en.Status,
-			Accrual:    en.Accrual,
-		})
+		allOrders = append(allOrders, en)
 	}
-	s.Logger.Info("allOrders", "Output", allOrders)
-	return allOrders, nil
+
+	result, err := json.Marshal(allOrders)
+	if err != nil {
+		s.Logger.Error("can't marshal allOrders", "GetOrders method", err.Error())
+		return nil, err
+	}
+	return result, nil
 }

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -32,7 +31,7 @@ func (h *GetOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonResponse, err := json.Marshal(orders)
+	// jsonResponse, err := json.Marshal(orders)
 	if err != nil {
 		h.log.Error("error encoding orders to JSON", err)
 		http.Error(w, h.er.InternalServer.Error(), http.StatusInternalServerError)
@@ -41,5 +40,5 @@ func (h *GetOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(jsonResponse)
+	w.Write(orders)
 }
