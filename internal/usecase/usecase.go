@@ -19,6 +19,8 @@ type Repository interface {
 	GetOrders(ctx context.Context, user string) ([]byte, error)
 	// GetBalance - получение текущего баланса пользователя
 	GetBalance(ctx context.Context, login string) (float32, float32, error)
+	// Debit - запрос на списание средств
+	Debit(ctx context.Context, user, numOrder string, sum float32) error
 }
 
 type UseCase struct {
@@ -56,4 +58,9 @@ func (uc *UseCase) DoGetOrders(ctx context.Context, user string) ([]byte, error)
 func (uc *UseCase) DoGetBalance(ctx context.Context, login string) (float32, float32, error) {
 	b, w, err := uc.r.GetBalance(ctx, login)
 	return b, w, err
+}
+
+func (uc *UseCase) DoDebit(ctx context.Context, user, numOrder string, sum float32) error {
+	err := uc.r.Debit(ctx, user, numOrder, sum)
+	return err
 }

@@ -12,7 +12,7 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
-  "login": "solo",
+  "login": "user",
   "password": "12345"
 }
 
@@ -52,5 +52,14 @@ Host: localhost:8080
 Content-Type: text/plain
 
 #12345678903
-
 31722088874
+
+### POST списание бонусов
+POST  http://localhost:8080/api/user/balance/withdraw
+Host: localhost:8080
+Content-Type: application/json
+
+{
+  "order": "2377225624",
+  "sum": 751
+}
