@@ -3,8 +3,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/nextlag/gomart/internal/usecase"
@@ -21,14 +19,13 @@ const LoginKey authContextKey = "login"
 // она обслуживает запросы и вставляет логин в контекст.
 // В противном случае она не позволяет продолжить выполнение и возвращает статус кода 401 (если пользователь не аутентифицирован),
 // или 500 (если произошла внутренняя ошибка сервера).
-func CookieAuthentication(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) func(next http.Handler) http.Handler {
+func CookieAuthentication(log usecase.Logger, er *usecase.AllErr) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			login, err := GetCookie(uc, log, r, er)
+			login, err := GetCookie(log, r, er)
 
 			switch {
 			case errors.Is(err, er.Token):
-				fmt.Println(err == er.Token)
 				http.Error(w, er.Token.Error(), http.StatusUnauthorized)
 			case errors.Is(err, er.Auth):
 				log.Error("error empty login", "error CookieAuthentication", err.Error())

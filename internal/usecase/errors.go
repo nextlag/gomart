@@ -4,6 +4,9 @@ import (
 	"errors"
 )
 
+type ErrRegister struct {
+	NoLogin error
+}
 type ErrorAuth struct {
 	Auth  error // Auth ошибка аутентификации
 	Token error // Token неверная сигнатура токена
@@ -33,17 +36,25 @@ type ErrGetOrders struct {
 	GetOrders error // GetOrders status 500: ошибка получения ордера
 	NoContent error // NoContent status 204: нет данных для ответа
 }
+type ErrDebit struct {
+	NoBalance error // NoBalance недостаточно баланса
+}
 
 type AllErr struct {
+	*ErrRegister
 	*ErrorAuth
 	*ErrCommon
 	*ErrAuthentication
 	*ErrPostOrder
 	*ErrGetOrders
+	*ErrDebit
 }
 
 func NewErr() *AllErr {
 	return &AllErr{
+		&ErrRegister{
+			NoLogin: errors.New("login is already taken"),
+		},
 		&ErrorAuth{
 			Auth:  errors.New("authentication error"),
 			Token: errors.New("signature is invalid"),
@@ -68,6 +79,9 @@ func NewErr() *AllErr {
 		&ErrGetOrders{
 			GetOrders: errors.New("error getting orders"),
 			NoContent: errors.New("no information to answer"),
+		},
+		&ErrDebit{
+			NoBalance: errors.New("not enough balance"),
 		},
 	}
 }
