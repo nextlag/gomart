@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -155,29 +156,36 @@ func (s *Storage) GetOrders(ctx context.Context, user string) ([]byte, error) {
 
 func (s *Storage) GetBalance(ctx context.Context, login string) (float32, float32, error) {
 	// Инициализация переменной для хранения баланса
-	var balance entity.User
-
+	var balance, withdrawn float32
 	// Создание экземпляра объекта для взаимодействия с базой данных
 	db := bun.NewDB(s.DB, pgdialect.New())
 
 	// Выполнение SELECT запроса к базе данных для получения бонусов по указанному логину
 	err := db.NewSelect().
-		Model(&balance).
-		ColumnExpr("balance", "withdrawn").
+		TableExpr("users").
+		ColumnExpr("balance, withdrawn").
 		Where("login = ?", login).
-		Scan(ctx)
-	if err != nil {
+		Scan(ctx, &balance, &withdrawn)
+	if errors.Is(err, sql.ErrNoRows) {
+		// Возвращаем ошибку, если нет данных для указанного пользователя
+		return 0, 0, s.NoBalance
+	} else if err != nil {
+		// Возвращаем другие ошибки
 		s.Logger.Error("error while scanning data", "usecase GetBalance", err.Error())
 		return 0, 0, err
 	}
 
-	return balance.Balance, balance.Withdrawn, nil
+	return balance, withdrawn, nil
 }
 
 func (s *Storage) Debit(ctx context.Context, user, order string, sum float32) error {
 	// Получение текущего баланса пользователя
 	var checkOrder entity.Orders
-	balance, _, nil := s.GetBalance(ctx, user)
+	balance, _, err := s.GetBalance(ctx, user)
+	if err != nil {
+		s.Logger.Error("no get balance", "error", err.Error())
+		return err
+	}
 
 	// Проверка наличия достаточного баланса для списания бонусов
 	if balance < sum {
@@ -200,7 +208,7 @@ func (s *Storage) Debit(ctx context.Context, user, order string, sum float32) er
 	}
 
 	// Проверка существования заказа в базе данных
-	err := db.NewSelect().
+	err = db.NewSelect().
 		Model(&userOrder).
 		Where(`"number" = ?`, order).
 		Scan(ctx)

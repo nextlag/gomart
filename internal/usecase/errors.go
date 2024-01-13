@@ -27,7 +27,6 @@ type ErrPostOrder struct {
 	RequestFormat error // RequestFormat status 400: неверный формат запроса
 	UnAuthUser    error // UnAuthUser status 401: пользователь не аутентифицирован
 	OrderFormat   error // OrderFormat status 422: неверный формат номера заказа
-	Duplicate     error // Duplicate
 }
 
 type ErrGetOrders struct {
@@ -35,7 +34,7 @@ type ErrGetOrders struct {
 	NoContent error // NoContent status 204: нет данных для ответа
 }
 type ErrDebit struct {
-	NoBalance error // NoBalance недостаточно баланса
+	NoBalance error // NoBalance на счету недостаточно средств
 }
 
 type AllErr struct {
@@ -69,14 +68,13 @@ func NewErr() *AllErr {
 			RequestFormat: errors.New("invalid request format"),
 			UnAuthUser:    errors.New("user is not authenticated"),
 			OrderFormat:   errors.New("invalid order format"),
-			Duplicate:     errors.New("duplicate key value violates unique constraint"),
 		},
 		&ErrGetOrders{
 			GetOrders: errors.New("error getting orders"),
 			NoContent: errors.New("no information to answer"),
 		},
 		&ErrDebit{
-			NoBalance: errors.New("not enough balance"),
+			NoBalance: errors.New("there are insufficient funds in the account"),
 		},
 	}
 }

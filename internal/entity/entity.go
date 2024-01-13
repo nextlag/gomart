@@ -8,8 +8,8 @@ type Entity interface {
 type User struct {
 	Login     string  `json:"login"`
 	Password  string  `json:"password"`
-	Balance   float32 `json:"balance"`
-	Withdrawn float32 `json:"withdrawn"`
+	Balance   float32 `json:"balance" bun:"balance"`
+	Withdrawn float32 `json:"withdrawn" bun:"withdrawn"`
 }
 
 // Order - Структура, предназначенная для вставки данных в таблицу заказов.
