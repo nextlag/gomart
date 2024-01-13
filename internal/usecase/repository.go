@@ -25,6 +25,7 @@ func NewStorage(er *AllErr, db *psql.Postgres, log *slog.Logger) *Storage {
 	return &Storage{er, db, log}
 }
 
+// Register registers a new user with the provided login and password.
 func (s *Storage) Register(ctx context.Context, login string, password string) error {
 	user := &entity.User{
 		Login:    login,
@@ -44,6 +45,7 @@ func (s *Storage) Register(ctx context.Context, login string, password string) e
 	return nil
 }
 
+// Auth authenticates a user with the provided login and password.
 func (s *Storage) Auth(ctx context.Context, login, password string) error {
 	var user entity.User
 
@@ -61,6 +63,7 @@ func (s *Storage) Auth(ctx context.Context, login, password string) error {
 	return nil
 }
 
+// InsertOrder inserts a new order for the specified user.
 func (s *Storage) InsertOrder(ctx context.Context, user string, order string) error {
 	now := time.Now()
 
@@ -111,6 +114,7 @@ func (s *Storage) InsertOrder(ctx context.Context, user string, order string) er
 	return nil
 }
 
+// GetOrders retrieves all orders for a specific user.
 func (s *Storage) GetOrders(ctx context.Context, user string) ([]byte, error) {
 	var (
 		allOrders []entity.Orders
@@ -153,6 +157,7 @@ func (s *Storage) GetOrders(ctx context.Context, user string) ([]byte, error) {
 	return result, nil
 }
 
+// GetBalance retrieves the balance and withdrawn amounts for a user.
 func (s *Storage) GetBalance(ctx context.Context, login string) (float32, float32, error) {
 	// Инициализация переменной для хранения баланса
 	var balance, withdrawn float32
@@ -174,6 +179,7 @@ func (s *Storage) GetBalance(ctx context.Context, login string) (float32, float3
 	return balance, withdrawn, nil
 }
 
+// Debit processes the debit operation for a user, updating the balance and withdrawn amounts.
 func (s *Storage) Debit(ctx context.Context, user, order string, sum float32) error {
 	// Получение текущего баланса пользователя
 	var checkOrder entity.Orders
