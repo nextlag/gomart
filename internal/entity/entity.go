@@ -1,9 +1,5 @@
 package entity
 
-type Entity interface {
-	GetEntity() *AllEntity
-}
-
 // User отражает информацию о зарегистрированных пользователях
 type User struct {
 	Login     string  `json:"login"`
@@ -14,12 +10,12 @@ type User struct {
 
 // Order - Структура, предназначенная для вставки данных в таблицу заказов.
 type Orders struct {
-	Users            string  `json:"users"`
+	Users            string  `json:"users,omitempty"`
 	Number           string  `json:"number"`
 	Status           string  `json:"status"`
-	Accrual          float32 `json:"accrual"`
+	Accrual          float32 `json:"accrual,omitempty"`
 	UploadedAt       string  `json:"uploaded_at"`
-	BonusesWithdrawn float32 `json:"bonuses_withdrawn"`
+	BonusesWithdrawn float32 `json:"bonuses_withdrawn,omitempty"`
 }
 
 // cтруктура, предназначенная для возврата клиенту данных о заказах с снятыми бонусами.
@@ -37,6 +33,6 @@ type OrderUpdateFromAccural struct {
 }
 
 type AllEntity struct {
-	User
-	Orders
+	*User
+	*Orders
 }

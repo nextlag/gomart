@@ -12,9 +12,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/nextlag/gomart/internal/config"
-	"github.com/nextlag/gomart/internal/controller/router"
+	"github.com/nextlag/gomart/internal/controllers"
 	"github.com/nextlag/gomart/internal/mw/logger"
-	"github.com/nextlag/gomart/internal/repository/psql"
 	"github.com/nextlag/gomart/internal/usecase"
 )
 
@@ -46,24 +45,19 @@ func main() {
 	)
 
 	// Repository
-	db, err := psql.New(cfg.DSN, log)
+	db, err := usecase.NewDB(cfg.DSN, log)
 	if err != nil {
 		log.Error("failed to connect in database", "error main", err.Error())
 		os.Exit(1)
 	}
 	defer db.Close()
 
-	// Инициализация use case, который предоставляет бизнес-логику для обработки запросов.
-	uc := usecase.New(usecase.NewStorage(er, db, log))
+	uc := usecase.New(usecase.NewStorage(er, db, log), log)
 
-	// Создание нового маршрутизатора Chi для обработки HTTP-запросов.
-	handler := chi.NewRouter()
-
-	// Настройка маршрутов с использованием роутера и создание обработчика запросов.
-	rout := router.SetupRouter(handler, log, uc, er)
-
-	// Настройка HTTP-сервера с использованием созданного маршрутизатора.
-	srv := setupServer(rout)
+	controller := controllers.New(uc, log, *er)
+	r := chi.NewRouter()
+	r.Mount("/", controller.Router(r))
+	srv := setupServer(r)
 
 	log.Info("server starting", slog.String("host", srv.Addr))
 

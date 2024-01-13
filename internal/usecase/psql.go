@@ -1,10 +1,9 @@
-package psql
+package usecase
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"time"
 )
 
@@ -45,7 +44,7 @@ func (s *Postgres) createTable(ctx context.Context) error {
 	return nil
 }
 
-func New(cfg string, log *slog.Logger) (*Postgres, error) {
+func NewDB(cfg string, log Logger) (*Postgres, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), createTablesTimeout)
 	defer cancel()
 	// Создание подключения к базе данных с использованием контекста

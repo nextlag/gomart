@@ -7,6 +7,12 @@ import (
 	"github.com/nextlag/gomart/internal/entity"
 )
 
+type Logger interface {
+	Info(msg string, args ...any)
+	Debug(msg string, args ...any)
+	Error(msg string, args ...any)
+}
+
 //go:generate mockgen -destination=mocks/mocks.go -package=mocks github.com/nextlag/gomart/internal/usecase Repository
 type Repository interface {
 	// Register - регистрация пользователя
@@ -19,22 +25,28 @@ type Repository interface {
 	GetOrders(ctx context.Context, user string) ([]byte, error)
 	// GetBalance - получение текущего баланса пользователя
 	GetBalance(ctx context.Context, login string) (float32, float32, error)
+	// Debit - запрос на списание средств
+	Debit(ctx context.Context, user, order string, sum float32) error
 }
 
 type UseCase struct {
+	l Logger     // interface Logger
 	r Repository // interface Repository
-	e *entity.AllEntity
+	e entity.AllEntity
 }
 
-func New(r Repository) *UseCase {
-	e := &entity.AllEntity{}
-	return &UseCase{r, e}
+func New(r Repository, l Logger) *UseCase {
+	e := UseCase{}.e
+	return &UseCase{l, r, e}
 }
 
 func (uc *UseCase) GetEntity() *entity.AllEntity {
-	return uc.e
+	return &uc.e
 }
 
+func (uc *UseCase) Do() *UseCase {
+	return uc
+}
 func (uc *UseCase) DoRegister(ctx context.Context, login, password string, _ *http.Request) error {
 	err := uc.r.Register(ctx, login, password)
 	return err
@@ -56,4 +68,9 @@ func (uc *UseCase) DoGetOrders(ctx context.Context, user string) ([]byte, error)
 func (uc *UseCase) DoGetBalance(ctx context.Context, login string) (float32, float32, error) {
 	b, w, err := uc.r.GetBalance(ctx, login)
 	return b, w, err
+}
+
+func (uc *UseCase) DoDebit(ctx context.Context, user, order string, sum float32) error {
+	err := uc.r.Debit(ctx, user, order, sum)
+	return err
 }

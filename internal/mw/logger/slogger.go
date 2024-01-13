@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/nextlag/gomart/internal/config"
+	"github.com/nextlag/gomart/internal/usecase"
 	"github.com/nextlag/gomart/pkg/logger/slogpretty"
 )
 
@@ -27,7 +28,7 @@ type RequestFields struct {
 }
 
 // New создает и возвращает новый middleware для логирования HTTP запросов.
-func New(log *slog.Logger) func(next http.Handler) http.Handler {
+func New(log usecase.Logger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			// Создаем логгер запроса
@@ -67,7 +68,7 @@ func New(log *slog.Logger) func(next http.Handler) http.Handler {
 }
 
 // SetupLogger - инициализация middleware для логирования HTTP-запросов
-func SetupLogger() *slog.Logger {
+func SetupLogger() usecase.Logger {
 	opts := slogpretty.PrettyHandlerOptions{
 		SlogOpts: &slog.HandlerOptions{
 			Level: config.Cfg.LogLevel,
