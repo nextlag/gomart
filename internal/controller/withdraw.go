@@ -38,6 +38,7 @@ func (h *Withdraw) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err := h.uc.DoDebit(r.Context(), user, request.Order, request.Sum)
 	switch {
 	case errors.Is(err, h.er.NoBalance):
+		h.log.Info("Недостаточно бонусов для  списания", "NoBalance", h.er.NoBalance.Error())
 		http.Error(w, h.er.NoBalance.Error(), http.StatusPaymentRequired)
 		return
 	case errors.Is(err, h.er.OrderFormat):
