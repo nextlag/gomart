@@ -1,10 +1,12 @@
 package controller
 
 import (
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 
+	"github.com/nextlag/gomart/internal/mw/auth"
 	"github.com/nextlag/gomart/internal/usecase"
 )
 
@@ -25,9 +27,14 @@ type debet struct {
 }
 
 func (h *Withdraw) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	user, _ := r.Context().Value("login").(string)
+	// Получаем логин из контекста
+	user, _ := r.Context().Value(auth.LoginKey).(string)
 	var request debet
-
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "invalid JSON format", http.StatusBadRequest)
+		return
+	}
+	h.log.Debug("debet request", "user", user, "order", request.Order, "sum", request.Sum)
 	err := h.uc.DoDebit(r.Context(), user, request.Order, request.Sum)
 	switch {
 	case errors.Is(err, h.er.NoBalance):

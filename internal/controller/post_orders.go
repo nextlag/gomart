@@ -24,6 +24,7 @@ func NewPostOrders(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) *P
 func (h *PostOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Получаем логин из контекста
 	user, _ := r.Context().Value(auth.LoginKey).(string)
+	h.log.Debug("get user PostOrders", "user", user)
 
 	// Чтение тела запроса
 	body, err := io.ReadAll(r.Body)
