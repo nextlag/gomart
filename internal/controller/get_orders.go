@@ -30,13 +30,10 @@ type OrderResponse struct {
 func (h *GetOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	user, _ := r.Context().Value(auth.LoginKey).(string)
 	ordersData, err := h.uc.DoGetOrders(r.Context(), user)
+	h.log.Debug("data from repository", "ordersData", ordersData)
 	if err != nil {
 		h.log.Debug("GetOrders handler", "error", err.Error())
 		http.Error(w, h.er.InternalServer.Error(), http.StatusInternalServerError)
-		return
-	}
-	if len(ordersData) == 0 {
-		http.Error(w, h.er.NoContent.Error(), http.StatusNoContent)
 		return
 	}
 
@@ -45,6 +42,11 @@ func (h *GetOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(ordersData, &orders); err != nil {
 		h.log.Error("error unmarshalling json", "GetOrders handler", err.Error())
 		http.Error(w, h.er.InternalServer.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if len(orders) == 0 {
+		http.Error(w, h.er.NoContent.Error(), http.StatusNoContent)
 		return
 	}
 
