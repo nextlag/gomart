@@ -1,11 +1,3 @@
-### POST save
-POST http://localhost:8080/
-Host: localhost:8080
-Content-Type: text/plain
-
-https://google.com
-
-
 ### POST register
 POST http://localhost:8080/api/user/register
 Host: localhost:8080
@@ -20,31 +12,23 @@ Content-Type: application/json
 POST http://localhost:8080/api/user/login
 Host: localhost:8080
 Content-Type: application/json
-CCookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG8ifQ.rLfRajrW0gUYnVIEkTLGCCqhFHfQvDMkFHLoO6fo0y0
+Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6Im5leHQifQ.uFayTG0yvMcs3py3M6-PbOZQUcznJTXVIo5RQLBokv8
+
+{
+  "login": "next",
+  "password": "12345"
+}
+
+### POST authentication solo
+POST http://localhost:8080/api/user/login
+Host: localhost:8080
+Content-Type: application/json
+Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG8ifQ.rLfRajrW0gUYnVIEkTLGCCqhFHfQvDMkFHLoO6fo0y0
 
 {
   "login": "solo",
   "password": "12345"
 }
-
-### POST authentication user
-POST http://localhost:8080/api/user/login
-Host: localhost:8080
-Content-Type: application/json
-Cookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InVzZXIifQ.7ChccM-lJ5ApcXu7pX5iAE74tSn2um0lAgrCp5hkjbk
-
-{
-  "login": "user",
-  "password": "12345"
-}
-
-### Get orders
-GET http://localhost:8080/api/user/orders
-
-### Get balance
-GET http://localhost:8080/api/user/balance
-
-
 
 ### POST request with cookie passed through headers and data in the body
 POST http://localhost:8080/api/user/orders
@@ -52,5 +36,29 @@ Host: localhost:8080
 Content-Type: text/plain
 
 #12345678903
+#31722088874
+#2377225624
+88070083642064
 
-31722088874
+### POST списание бонусов
+POST  http://localhost:8080/api/user/balance/withdraw
+Host: localhost:8080
+Content-Type: application/json
+
+{
+  "order": "88070083642064",
+  "sum": 203
+}
+
+
+### Get orders
+GET http://localhost:8080/api/user/orders
+
+### Get balance
+GET http://localhost:8080/api/user/balance
+
+### Get withdrawals
+GET http://localhost:8080/api/user/withdrawals
+
+
+

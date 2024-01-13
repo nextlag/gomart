@@ -1,106 +1,139 @@
 package usecase
 
 import (
-	"log/slog"
+	"context"
+	"log"
 	"time"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
 
 	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/entity"
 )
 
-func GetAccrual(order entity.Orders, cfg config.HTTPServer, log *slog.Logger) entity.OrderUpdateFromAccural {
-	client := resty.New().SetBaseURL(cfg.Accrual)
-	var orderUpdate entity.OrderUpdateFromAccural
+// OrderResponse - cтруктура предназначена для получения данных из системы начисления
+type OrderResponse struct {
+	Order   string  `json:"order"`
+	Status  string  `json:"status"`
+	Accrual float32 `json:"accrual"`
+}
 
-	maxWaitTime := 5 * time.Minute  // Максимальное время ожидания
-	waitInterval := 3 * time.Second // Интервал ожидания
-
-	startTime := time.Now()
-
-	for elapsed := time.Since(startTime); elapsed < maxWaitTime; elapsed = time.Since(startTime) {
+// GetAccrual функция, выполняющая HTTP-запрос и возвращающая структуру OrderResponse
+func GetAccrual(order entity.Orders) OrderResponse {
+	client := resty.New().SetBaseURL(config.Cfg.Accrual)
+	var orderUpdate OrderResponse
+	for {
 		resp, err := client.R().
 			SetResult(&orderUpdate).
-			Get("/api/orders/" + order.Number)
+			Get("/api/orders/" + order.Order)
 
 		if err != nil {
-			log.Error("error when sending a GET request to the accrual system:", "error GetAccrual", err.Error())
-			time.Sleep(waitInterval)
-			continue
+			log.Printf("got error trying to send a get request to accrual: %v", err)
+			break
 		}
+		log.Printf("response body: %s", resp.String())
 
 		switch resp.StatusCode() {
 		case 429:
-			// Пауза 3 секунды при получении кода 429 (слишком много запросов)
-			time.Sleep(waitInterval)
-			continue
+			log.Println("429 status code. Sleeping for 3 seconds.")
+			time.Sleep(3 * time.Second)
 		case 204:
-			// Пауза 1 секунда при получении кода 204 (успешный запрос, но нет данных)
-			time.Sleep(waitInterval)
-			continue
+			log.Println("204 status code. Sleeping for 1 second.")
+			time.Sleep(1 * time.Second)
 		}
 
 		if resp.StatusCode() == 500 {
-			log.Error("internal server error in the accrual system:", nil)
-			time.Sleep(waitInterval)
-			continue
+			log.Printf("internal server error in accrual system: %v", err)
+			break
 		}
 
 		if orderUpdate.Status == "INVALID" || orderUpdate.Status == "PROCESSED" {
-			return orderUpdate
+			log.Printf("Exiting the loop. Order status: %s", orderUpdate.Status)
+			break
 		}
-
-		// Пауза перед следующей попыткой
-		time.Sleep(waitInterval)
 	}
-
 	return orderUpdate
 }
 
-// // GetAccrual отправляет ордера в систему начисления и получает обновления статуса с начисленными бонусами.
-// func GetAccrual(order entity.Order, cfg config.HTTPServer, log *slog.Logger) entity.Points {
-// 	// Инициализация HTTP-клиента с базовым URL из конфигурации
-// 	client := resty.New().SetBaseURL(cfg.Accrual)
-//
-// 	// Переменная для хранения обновлений статуса ордера
-// 	var orderUpdate entity.Points
-//
-// 	// Бесконечный цикл для повторных запросов до получения ожидаемого результата
-// 	for {
-// 		// Отправка GET-запроса к системе начисления с номером ордера
-// 		resp, err := client.R().
-// 			SetResult(&orderUpdate).
-// 			Get("/api/orders/" + order.Order)
-//
-// 		// Проверка ошибок при отправке запроса
-// 		if err != nil {
-// 			log.Error("Ошибка при отправке GET-запроса в систему начисления: ", err)
-// 			break
-// 		}
-//
-// 		// Обработка различных статусов ответа
-// 		switch resp.StatusCode() {
-// 		case 429:
-// 			// Пауза 3 секунды при получении кода 429 (слишком много запросов)
-// 			time.Sleep(3 * time.Second)
-// 		case 204:
-// 			// Пауза 1 секунда при получении кода 204 (успешный запрос, но нет данных)
-// 			time.Sleep(1 * time.Second)
-// 		}
-//
-// 		// Проверка на внутреннюю ошибку сервера
-// 		if resp.StatusCode() == 500 {
-// 			log.Error("Внутренняя ошибка сервера в системе начисления: ", err)
-// 			break
-// 		}
-//
-// 		// Проверка статуса обновления ордера, если статус "INVALID" или "PROCESSED", выход из цикла
-// 		if orderUpdate.Status == "INVALID" || orderUpdate.Status == "PROCESSED" {
-// 			break
-// 		}
-// 	}
-//
-// 	// Возвращение обновленного статуса ордера
-// 	return orderUpdate
-// }
+func (uc *UseCase) Sync() error {
+	ticker := time.NewTicker(tick)
+	ctx := context.Background()
+
+	for range ticker.C {
+
+		var allOrders []entity.Orders
+
+		order := &entity.Orders{}
+
+		db := bun.NewDB(uc.DB, pgdialect.New())
+
+		rows, err := db.NewSelect().
+			Model(order).
+			Where("status != ? AND status != ?", "PROCESSED", "INVALID").
+			Rows(ctx)
+		rows.Err()
+		if err != nil {
+			return err
+		}
+
+		for rows.Next() {
+			var orderRow entity.Orders
+			err = rows.Scan(&orderRow.Users, &orderRow.Order, &orderRow.Status, &orderRow.Accrual, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn)
+			if err != nil {
+				return err
+			}
+			allOrders = append(allOrders, entity.Orders{
+				Users:      orderRow.Users,
+				Order:      orderRow.Order,
+				Status:     orderRow.Status,
+				Accrual:    orderRow.Accrual,
+				UploadedAt: orderRow.UploadedAt,
+			})
+		}
+		err = rows.Close()
+		if err != nil {
+			return err
+		}
+
+		for _, unfinishedOrder := range allOrders {
+			log.Print(unfinishedOrder)
+			finishedOrder := GetAccrual(unfinishedOrder)
+			log.Print(finishedOrder)
+			err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.Users)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string) error {
+
+	orderModel := &entity.Orders{}
+	userModel := &entity.User{}
+
+	db := bun.NewDB(uc.DB, pgdialect.New())
+
+	_, err := db.NewUpdate().
+		Model(orderModel).
+		Set("status = ?, accrual = ?", orderAccrual.Status, orderAccrual.Accrual).
+		Where(`"order" = ?`, orderAccrual.Order).
+		Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.NewUpdate().
+		Model(userModel).
+		Set("balance = balance + ?", orderAccrual.Accrual).
+		Where(`login = ?`, login).
+		Exec(ctx)
+	if err != nil {
+		uc.log.Error("error making an update request in user table", err)
+		return err
+	}
+	return nil
+}

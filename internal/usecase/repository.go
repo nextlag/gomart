@@ -3,50 +3,42 @@ package usecase
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
+	"errors"
 	"time"
 
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 
 	"github.com/nextlag/gomart/internal/entity"
-	"github.com/nextlag/gomart/internal/repository/psql"
 	"github.com/nextlag/gomart/pkg/luna"
 )
 
-type Storage struct {
-	*AllErr
-	*psql.Postgres
-	*slog.Logger
-}
+const tick = time.Second * 1
 
-func NewStorage(er *AllErr, db *psql.Postgres, log *slog.Logger) *Storage {
-	return &Storage{er, db, log}
-}
-
-func (s *Storage) Register(ctx context.Context, login string, password string) error {
+// Register registers a new user with the provided login and password.
+func (uc *UseCase) Register(ctx context.Context, login string, password string) error {
 	user := &entity.User{
 		Login:    login,
 		Password: password,
 	}
-	db := bun.NewDB(s.Postgres.DB, pgdialect.New())
+	db := bun.NewDB(uc.DB, pgdialect.New())
 
 	_, err := db.NewInsert().
 		Model(user).
 		Exec(ctx)
 
 	if err != nil {
-		s.Error("error writing data: ", "usecase Register", err.Error())
 		return err
 	}
 
 	return nil
 }
 
-func (s *Storage) Auth(ctx context.Context, login, password string) error {
+// ErrAuth authenticates a user with the provided login and password.
+func (uc *UseCase) Auth(ctx context.Context, login, password string) error {
 	var user entity.User
 
-	db := bun.NewDB(s.Postgres.DB, pgdialect.New())
+	db := bun.NewDB(uc.DB, pgdialect.New())
 
 	err := db.NewSelect().
 		Model(&user).
@@ -60,25 +52,25 @@ func (s *Storage) Auth(ctx context.Context, login, password string) error {
 	return nil
 }
 
-func (s *Storage) InsertOrder(ctx context.Context, user string, order string) error {
+// InsertOrder inserts a new order for the specified user.
+func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) error {
 	now := time.Now()
 
 	bonusesWithdrawn := float32(0)
 
 	userOrder := &entity.Orders{
 		Users:            user,
-		Number:           order,
-		UploadedAt:       now.Format(time.RFC3339),
+		Order:            order,
 		Status:           "NEW",
+		UploadedAt:       now,
 		BonusesWithdrawn: bonusesWithdrawn,
 	}
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
-		s.Logger.Debug("InsertOrder", "no valid", validOrder, "status", "invalid order format")
-		return s.OrderFormat
+		return uc.Err().ErrOrderFormat
 	}
 
-	db := bun.NewDB(s.DB, pgdialect.New())
+	db := bun.NewDB(uc.DB, pgdialect.New())
 
 	var checkOrder entity.Orders
 
@@ -86,40 +78,42 @@ func (s *Storage) InsertOrder(ctx context.Context, user string, order string) er
 		Model(&checkOrder).
 		Where(`"order" = ?`, order).
 		Scan(ctx)
-	if err == nil {
+	if errors.Is(err, nil) {
 		// Заказ существует
 		if checkOrder.Users == user {
 			// Заказ принадлежит текущему пользователю
-			return s.ThisUser
+			return uc.Err().ErrThisUser
 		}
 		// Заказ принадлежит другому пользователю
-		return s.AnotherUser
+		return uc.Err().ErrAnotherUser
 	}
 
 	// Заказ не существует, вставьте его
 	_, err = db.NewInsert().
 		Model(userOrder).
+		Set("uploaded_at = ?", now.Format(time.RFC3339)).
 		Exec(ctx)
 	if err != nil {
-		s.Error("error writing data: ", "usecase InsertOrder", err.Error())
 		return err
 	}
 
 	return nil
 }
 
-func (s *Storage) GetOrders(ctx context.Context, user string) ([]byte, error) {
-	var allOrders []entity.Orders
-	db := bun.NewDB(s.Postgres.DB, pgdialect.New())
+// GetOrders retrieves all orders for a specific user.
+func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
+	var (
+		allOrders []entity.Orders
+		userOrder entity.Orders
+	)
+	db := bun.NewDB(uc.DB, pgdialect.New())
 
 	rows, err := db.NewSelect().
-		TableExpr("orders").
-		Column("number", "status", "accrual", "uploaded_at").
+		Model(&userOrder).
 		Where("users = ?", user).
 		Order("uploaded_at ASC").
 		Rows(ctx)
 	if err != nil {
-		s.Logger.Error("error getting data", "usecase GetOrders", err.Error())
 		return nil, err
 	}
 
@@ -131,45 +125,166 @@ func (s *Storage) GetOrders(ctx context.Context, user string) ([]byte, error) {
 
 	for rows.Next() {
 		var en entity.Orders
-		err = rows.Scan(
-			&en.Number,
-			&en.Status,
-			&en.Accrual,
-			&en.UploadedAt,
-		)
+		err = rows.Scan(&en.Users, &en.Order, &en.Status, &en.Accrual, &en.UploadedAt, &en.BonusesWithdrawn)
 		if err != nil {
-			s.Logger.Error("error scanning data", "usecase GetOrders", err.Error())
 			return nil, err
 		}
 
-		allOrders = append(allOrders, en)
+		allOrders = append(allOrders, entity.Orders{
+			Order:      en.Order,
+			Status:     en.Status,
+			Accrual:    en.Accrual,
+			UploadedAt: en.UploadedAt,
+		})
 	}
 
 	result, err := json.Marshal(allOrders)
 	if err != nil {
-		s.Logger.Error("error marshaling allOrders", "usecase GetOrders", err.Error())
 		return nil, err
 	}
 	return result, nil
 }
 
-func (s *Storage) GetBalance(ctx context.Context, login string) (float32, float32, error) {
+// GetBalance retrieves the balance and withdrawn amounts for a user.
+func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float32, error) {
 	// Инициализация переменной для хранения баланса
-	var balance entity.User
-
+	var balance, withdrawn float32
 	// Создание экземпляра объекта для взаимодействия с базой данных
-	db := bun.NewDB(s.DB, pgdialect.New())
+	db := bun.NewDB(uc.DB, pgdialect.New())
 
 	// Выполнение SELECT запроса к базе данных для получения бонусов по указанному логину
 	err := db.NewSelect().
-		Model(&balance).
-		ColumnExpr("balance", "withdrawn").
+		TableExpr("users").
+		ColumnExpr("balance, withdrawn").
 		Where("login = ?", login).
-		Scan(ctx)
+		Scan(ctx, &balance, &withdrawn)
 	if err != nil {
-		s.Logger.Error("error while scanning data", "usecase GetBalance", err.Error())
 		return 0, 0, err
 	}
 
-	return balance.Balance, balance.Withdrawn, nil
+	return balance, withdrawn, nil
+}
+
+// Debit - обновляя баланс и снимаемые суммы.
+func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) error {
+	validOrder := luna.CheckValidOrder(order)
+	if !validOrder {
+		return uc.Err().ErrOrderFormat
+	}
+
+	// Получение текущего баланса пользователя
+	balance, _, err := uc.GetBalance(ctx, user)
+	if err != nil {
+		return err
+	}
+
+	// Проверка наличия достаточного баланса для списания бонусов
+	if balance < sum {
+		return uc.Err().ErrNoBalance
+	}
+
+	// Инициализация подключения к базе данных
+	db := bun.NewDB(uc.DB, pgdialect.New())
+
+	// Получение текущей даты и времени
+	now := time.Now()
+
+	// Создание объекта заказа пользователя
+	userOrder := &entity.Orders{
+		Users:            user,
+		Order:            order,
+		Status:           "NEW",
+		UploadedAt:       now,
+		BonusesWithdrawn: sum,
+	}
+
+	// Проверка существования заказа в базе данных
+	err = db.NewSelect().
+		Model(&userOrder).
+		Where(`"order" = ?`, order).
+		Scan(ctx)
+	if err != nil {
+		// Заказ не существует, добавляем новый заказ в базу данных
+		_, err = db.NewInsert().
+			Model(userOrder).
+			Set("uploaded_at = ?", now.Format(time.RFC3339)).
+			Exec(ctx)
+		if err != nil {
+			// Заказ существует
+			if userOrder.Users == user {
+				// Заказ принадлежит текущему пользователю
+				return uc.Err().ErrThisUser
+			}
+			// Заказ принадлежит другому пользователю
+			return uc.Err().ErrAnotherUser
+		}
+		return err
+	}
+
+	// Обновление баланса пользователя после списания бонусов
+	_, err = db.NewUpdate().
+		TableExpr("users").
+		Set("balance = ?", balance-sum).
+		Set("withdrawn = withdrawn + ?", sum).
+		Where("login = ?", user).
+		Exec(ctx)
+	if !errors.Is(err, nil) {
+		return err
+	}
+
+	return nil
+}
+
+func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, error) {
+	var (
+		allOrders []entity.Withdrawals
+		userOrder entity.Orders
+	)
+
+	// Инициализация подключения к базе данных
+	db := bun.NewDB(uc.DB, pgdialect.New())
+
+	// Выборка всех заказов пользователя, где bonuses_withdrawn != 0
+	rows, err := db.NewSelect().
+		Model(&userOrder).
+		Where("users = ? and bonuses_withdrawn != 0", user).
+		Order("uploaded_at ASC").
+		Rows(ctx)
+	rows.Err()
+
+	if err != nil {
+		return nil, err
+	}
+
+	noRows := true
+	for rows.Next() {
+		noRows = false
+		var orderRow entity.Orders
+		if err = rows.Scan(
+			&orderRow.Users,
+			&orderRow.Order,
+			&orderRow.Status,
+			&orderRow.Accrual,
+			&orderRow.UploadedAt,
+			&orderRow.BonusesWithdrawn,
+		); err != nil {
+			return nil, err
+		}
+
+		allOrders = append(allOrders, entity.Withdrawals{
+			Order:            orderRow.Order,
+			BonusesWithdrawn: orderRow.BonusesWithdrawn,
+			Time:             orderRow.UploadedAt,
+		})
+	}
+
+	if noRows {
+		return nil, ErrNoRows
+	}
+
+	result, err := json.Marshal(allOrders)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
