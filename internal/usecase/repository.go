@@ -85,15 +85,17 @@ func (s *Storage) InsertOrder(ctx context.Context, user string, order string) er
 
 	err := db.NewSelect().
 		Model(&checkOrder).
-		Where(`"order" = ?`, order).
+		Where(`"number" = ?`, order).
 		Scan(ctx)
-	if err == nil {
+	if errors.Is(err, nil) {
 		// Заказ существует
 		if checkOrder.Users == user {
 			// Заказ принадлежит текущему пользователю
+			s.Logger.Debug("current user order", "this user", checkOrder.Users)
 			return s.ThisUser
 		}
 		// Заказ принадлежит другому пользователю
+		s.Logger.Debug("another user order", "another user", checkOrder.Users)
 		return s.AnotherUser
 	}
 
@@ -102,7 +104,7 @@ func (s *Storage) InsertOrder(ctx context.Context, user string, order string) er
 		Model(userOrder).
 		Exec(ctx)
 	if err != nil {
-		s.Error("error writing data: ", "usecase InsertOrder", err.Error())
+		s.Error("error writing data", "usecase InsertOrder", err.Error())
 		return err
 	}
 
