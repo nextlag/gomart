@@ -39,6 +39,7 @@ func (h *PostOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.uc.DoInsertOrder(r.Context(), user, order)
+	h.log.Debug("error handler PostOrders", "error", err.Error())
 	switch {
 	case errors.Is(err, h.er.OrderFormat):
 		h.log.Debug("insert Order 422", "error", err.Error())

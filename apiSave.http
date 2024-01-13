@@ -20,7 +20,7 @@ Content-Type: application/json
 POST http://localhost:8080/api/user/login
 Host: localhost:8080
 Content-Type: application/json
-CCookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG8ifQ.rLfRajrW0gUYnVIEkTLGCCqhFHfQvDMkFHLoO6fo0y0
+Cookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG8ifQ.rLfRajrW0gUYnVIEkTLGCCqhFHfQvDMkFHLoO6fo0y0
 
 {
   "login": "solo",
@@ -46,7 +46,7 @@ GET http://localhost:8080/api/user/balance
 
 
 
-### POST request with cookie passed through headers and data in the body
+### POST orders
 POST http://localhost:8080/api/user/orders
 Host: localhost:8080
 Content-Type: text/plain
