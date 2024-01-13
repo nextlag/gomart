@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -84,15 +85,17 @@ func (s *Storage) InsertOrder(ctx context.Context, user string, order string) er
 
 	err := db.NewSelect().
 		Model(&checkOrder).
-		Where(`"order" = ?`, order).
+		Where(`"number" = ?`, order).
 		Scan(ctx)
-	if err == nil {
+	if errors.Is(err, nil) {
 		// Заказ существует
 		if checkOrder.Users == user {
 			// Заказ принадлежит текущему пользователю
+			s.Logger.Debug("current user order", "this user", checkOrder.Users)
 			return s.ThisUser
 		}
 		// Заказ принадлежит другому пользователю
+		s.Logger.Debug("another user order", "another user", checkOrder.Users)
 		return s.AnotherUser
 	}
 
@@ -101,7 +104,7 @@ func (s *Storage) InsertOrder(ctx context.Context, user string, order string) er
 		Model(userOrder).
 		Exec(ctx)
 	if err != nil {
-		s.Error("error writing data: ", "usecase InsertOrder", err.Error())
+		s.Error("error writing data", "usecase InsertOrder", err.Error())
 		return err
 	}
 
@@ -109,12 +112,14 @@ func (s *Storage) InsertOrder(ctx context.Context, user string, order string) er
 }
 
 func (s *Storage) GetOrders(ctx context.Context, user string) ([]byte, error) {
-	var allOrders []entity.Orders
+	var (
+		allOrders []entity.Orders
+		userOrder entity.Orders
+	)
 	db := bun.NewDB(s.Postgres.DB, pgdialect.New())
 
 	rows, err := db.NewSelect().
-		TableExpr("orders").
-		Column("number", "status", "accrual", "uploaded_at").
+		Model(&userOrder).
 		Where("users = ?", user).
 		Order("uploaded_at ASC").
 		Rows(ctx)
@@ -131,12 +136,7 @@ func (s *Storage) GetOrders(ctx context.Context, user string) ([]byte, error) {
 
 	for rows.Next() {
 		var en entity.Orders
-		err = rows.Scan(
-			&en.Number,
-			&en.Status,
-			&en.Accrual,
-			&en.UploadedAt,
-		)
+		err = rows.Scan(&en.Users, &en.Number, &en.Status, &en.Accrual, &en.UploadedAt, &en.BonusesWithdrawn)
 		if err != nil {
 			s.Logger.Error("error scanning data", "usecase GetOrders", err.Error())
 			return nil, err
@@ -155,21 +155,78 @@ func (s *Storage) GetOrders(ctx context.Context, user string) ([]byte, error) {
 
 func (s *Storage) GetBalance(ctx context.Context, login string) (float32, float32, error) {
 	// Инициализация переменной для хранения баланса
-	var balance entity.User
-
+	var balance, withdrawn float32
 	// Создание экземпляра объекта для взаимодействия с базой данных
 	db := bun.NewDB(s.DB, pgdialect.New())
 
 	// Выполнение SELECT запроса к базе данных для получения бонусов по указанному логину
 	err := db.NewSelect().
-		Model(&balance).
-		ColumnExpr("balance", "withdrawn").
+		TableExpr("users").
+		ColumnExpr("balance, withdrawn").
 		Where("login = ?", login).
-		Scan(ctx)
+		Scan(ctx, &balance, &withdrawn)
 	if err != nil {
+		// Возвращаем другие ошибки
 		s.Logger.Error("error while scanning data", "usecase GetBalance", err.Error())
 		return 0, 0, err
 	}
 
-	return balance.Balance, balance.Withdrawn, nil
+	return balance, withdrawn, nil
+}
+
+func (s *Storage) Debit(ctx context.Context, user, order string, sum float32) error {
+	// Получение текущего баланса пользователя
+	var checkOrder entity.Orders
+	balance, _, err := s.GetBalance(ctx, user)
+	if err != nil {
+		s.Logger.Error("error get balance from GetBalance method", "usecase Debit", err.Error())
+		return err
+	}
+	// Проверка наличия достаточного баланса для списания бонусов
+	if balance < sum {
+		return s.NoBalance
+	}
+
+	// Инициализация подключения к базе данных
+	db := bun.NewDB(s.DB, pgdialect.New())
+
+	// Получение текущей даты и времени
+	now := time.Now()
+
+	// Создание объекта заказа пользователя
+	userOrder := &entity.Orders{
+		Users:            user,
+		Number:           order,
+		Status:           "NEW",
+		UploadedAt:       now.Format(time.RFC3339),
+		BonusesWithdrawn: sum,
+	}
+
+	// Проверка существования заказа в базе данных
+	err = db.NewSelect().
+		Model(&userOrder).
+		Where(`"number" = ?`, order).
+		Scan(ctx)
+	if errors.Is(err, nil) {
+		// Заказ существует
+		if checkOrder.Users == user {
+			// Заказ принадлежит текущему пользователю
+			return s.ThisUser
+		}
+		// Заказ принадлежит другому пользователю
+		return s.AnotherUser
+	}
+
+	// Обновление баланса пользователя после списания бонусов
+	_, err = db.NewUpdate().
+		TableExpr("users").
+		Set("balance = ?", balance-sum).
+		Set("withdrawn = withdrawn + ?", sum).
+		Where("login = ?", user).
+		Exec(ctx)
+	if !errors.Is(err, nil) {
+		return err
+	}
+
+	return nil
 }

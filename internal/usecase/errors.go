@@ -33,6 +33,9 @@ type ErrGetOrders struct {
 	GetOrders error // GetOrders status 500: ошибка получения ордера
 	NoContent error // NoContent status 204: нет данных для ответа
 }
+type ErrDebit struct {
+	NoBalance error // NoBalance недостаточно баланса
+}
 
 type AllErr struct {
 	*ErrorAuth
@@ -40,6 +43,7 @@ type AllErr struct {
 	*ErrAuthentication
 	*ErrPostOrder
 	*ErrGetOrders
+	*ErrDebit
 }
 
 func NewErr() *AllErr {
@@ -68,6 +72,9 @@ func NewErr() *AllErr {
 		&ErrGetOrders{
 			GetOrders: errors.New("error getting orders"),
 			NoContent: errors.New("no information to answer"),
+		},
+		&ErrDebit{
+			NoBalance: errors.New("not enough balance"),
 		},
 	}
 }

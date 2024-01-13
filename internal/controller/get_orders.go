@@ -30,7 +30,6 @@ type OrderResponse struct {
 func (h *GetOrders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	user, _ := r.Context().Value(auth.LoginKey).(string)
 	ordersData, err := h.uc.DoGetOrders(r.Context(), user)
-	h.log.Debug("data from repository", "ordersData", ordersData)
 	if err != nil {
 		h.log.Debug("GetOrders handler", "error", err.Error())
 		http.Error(w, h.er.InternalServer.Error(), http.StatusInternalServerError)
