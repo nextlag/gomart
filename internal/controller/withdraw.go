@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -27,6 +28,11 @@ type debet struct {
 func (h *Withdraw) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	user, _ := r.Context().Value("login").(string)
 	var request debet
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "invalid JSON format", http.StatusBadRequest)
+		return
+	}
 
 	err := h.uc.DoDebit(r.Context(), user, request.Order, request.Sum)
 	switch {

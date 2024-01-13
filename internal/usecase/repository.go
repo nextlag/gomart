@@ -88,86 +88,29 @@ func (s *Storage) InsertOrder(ctx context.Context, user string, order string) er
 		Model(&checkOrder).
 		Where(`"number" = ?`, order).
 		Scan(ctx)
-	// if errors.Is(err, nil) {
-	// 	// Заказ существует
-	// 	if checkOrder.Users == user {
-	// 		// Заказ принадлежит текущему пользователю
-	// 		s.Logger.Debug("current user order", "this user", checkOrder.Users)
-	// 		return s.ThisUser
-	// 	}
-	// 	// Заказ принадлежит другому пользователю
-	// 	s.Logger.Debug("another user order", "another user", checkOrder.Users)
-	// 	return s.AnotherUser
-	// }
+	if errors.Is(err, nil) {
+		// Заказ существует
+		if checkOrder.Users == user {
+			// Заказ принадлежит текущему пользователю
+			s.Logger.Debug("current user order", "this user", checkOrder.Users)
+			return s.ThisUser
+		}
+		// Заказ принадлежит другому пользователю
+		s.Logger.Debug("another user order", "another user", checkOrder.Users)
+		return s.AnotherUser
+	}
 
 	// Заказ не существует, вставьте его
-
+	_, err = db.NewInsert().
+		Model(userOrder).
+		Exec(ctx)
 	if err != nil {
-		_, err = db.NewInsert().
-			Model(userOrder).
-			Exec(ctx)
-		if err != nil {
-			s.Error("error writing data", "usecase InsertOrder", err.Error())
-			return err
-		}
+		s.Error("error writing data", "usecase InsertOrder", err.Error())
+		return err
 	}
-	if checkOrder.Users != user && checkOrder.Number == order {
-		return s.AnotherUser
-	} else if checkOrder.Users == user && checkOrder.Number == order {
-		return s.ThisUser
-	}
+
 	return nil
 }
-
-// func (s *Storage) InsertOrder(ctx context.Context, user string, order string) error {
-// 	now := time.Now()
-//
-// 	bonusesWithdrawn := float32(0)
-//
-// 	userOrder := &entity.Orders{
-// 		Users:            user,
-// 		Number:           order,
-// 		UploadedAt:       now.Format(time.RFC3339),
-// 		Status:           "NEW",
-// 		BonusesWithdrawn: bonusesWithdrawn,
-// 	}
-// 	validOrder := luna.CheckValidOrder(order)
-// 	if !validOrder {
-// 		s.Logger.Debug("InsertOrder", "no valid", validOrder, "status", "invalid order format")
-// 		return s.OrderFormat
-// 	}
-//
-// 	db := bun.NewDB(s.DB, pgdialect.New())
-//
-// 	var checkOrder entity.Orders
-//
-// 	err := db.NewSelect().
-// 		Model(&checkOrder).
-// 		Where(`"number" = ?`, order).
-// 		Scan(ctx)
-// 	if errors.Is(err, nil) {
-// 		// Заказ существует
-// 		if checkOrder.Users == user {
-// 			// Заказ принадлежит текущему пользователю
-// 			s.Logger.Debug("current user order", "this user", checkOrder.Users)
-// 			return s.ThisUser
-// 		}
-// 		// Заказ принадлежит другому пользователю
-// 		s.Logger.Debug("another user order", "another user", checkOrder.Users)
-// 		return s.AnotherUser
-// 	}
-//
-// 	// Заказ не существует, вставьте его
-// 	_, err = db.NewInsert().
-// 		Model(userOrder).
-// 		Exec(ctx)
-// 	if err != nil {
-// 		s.Error("error writing data", "usecase InsertOrder", err.Error())
-// 		return err
-// 	}
-//
-// 	return nil
-// }
 
 func (s *Storage) GetOrders(ctx context.Context, user string) ([]byte, error) {
 	var (
@@ -238,14 +181,11 @@ func (s *Storage) GetBalance(ctx context.Context, login string) (float32, float3
 func (s *Storage) Debit(ctx context.Context, user, order string, sum float32) error {
 	// Получение текущего баланса пользователя
 	var checkOrder entity.Orders
-	balance, _, err := s.GetBalance(ctx, user)
+	balance, _, nil := s.GetBalance(ctx, user)
+
 	// Проверка наличия достаточного баланса для списания бонусов
-	if errors.Is(err, s.NoBalance) || balance < sum {
+	if balance < sum {
 		return s.NoBalance
-	}
-	if err != nil {
-		s.Logger.Error("no get balance", "error", err.Error())
-		return err
 	}
 
 	// Инициализация подключения к базе данных
@@ -264,9 +204,9 @@ func (s *Storage) Debit(ctx context.Context, user, order string, sum float32) er
 	}
 
 	// Проверка существования заказа в базе данных
-	err = db.NewSelect().
+	err := db.NewSelect().
 		Model(&userOrder).
-		Where(`"number" = ?`, order).
+		Where(`"order" = ?`, order).
 		Scan(ctx)
 	if errors.Is(err, nil) {
 		// Заказ существует
