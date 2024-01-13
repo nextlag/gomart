@@ -182,14 +182,13 @@ func (s *Storage) Debit(ctx context.Context, user, order string, sum float32) er
 	// Получение текущего баланса пользователя
 	var checkOrder entity.Orders
 	balance, _, err := s.GetBalance(ctx, user)
+	// Проверка наличия достаточного баланса для списания бонусов
+	if errors.Is(err, s.NoBalance) || balance < sum {
+		return s.NoBalance
+	}
 	if err != nil {
 		s.Logger.Error("no get balance", "error", err.Error())
 		return err
-	}
-
-	// Проверка наличия достаточного баланса для списания бонусов
-	if balance < sum {
-		return s.NoBalance
 	}
 
 	// Инициализация подключения к базе данных
