@@ -53,7 +53,8 @@ Content-Type: text/plain
 
 #12345678903
 #31722088874
-31685555
+#31685555
+241844
 
 ### POST списание бонусов
 POST  http://localhost:8080/api/user/balance/withdraw

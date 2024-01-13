@@ -88,29 +88,86 @@ func (s *Storage) InsertOrder(ctx context.Context, user string, order string) er
 		Model(&checkOrder).
 		Where(`"number" = ?`, order).
 		Scan(ctx)
-	if errors.Is(err, nil) {
-		// Заказ существует
-		if checkOrder.Users == user {
-			// Заказ принадлежит текущему пользователю
-			s.Logger.Debug("current user order", "this user", checkOrder.Users)
-			return s.ThisUser
-		}
-		// Заказ принадлежит другому пользователю
-		s.Logger.Debug("another user order", "another user", checkOrder.Users)
-		return s.AnotherUser
-	}
+	// if errors.Is(err, nil) {
+	// 	// Заказ существует
+	// 	if checkOrder.Users == user {
+	// 		// Заказ принадлежит текущему пользователю
+	// 		s.Logger.Debug("current user order", "this user", checkOrder.Users)
+	// 		return s.ThisUser
+	// 	}
+	// 	// Заказ принадлежит другому пользователю
+	// 	s.Logger.Debug("another user order", "another user", checkOrder.Users)
+	// 	return s.AnotherUser
+	// }
 
 	// Заказ не существует, вставьте его
-	_, err = db.NewInsert().
-		Model(userOrder).
-		Exec(ctx)
-	if err != nil {
-		s.Error("error writing data", "usecase InsertOrder", err.Error())
-		return err
-	}
 
+	if err != nil {
+		_, err = db.NewInsert().
+			Model(userOrder).
+			Exec(ctx)
+		if err != nil {
+			s.Error("error writing data", "usecase InsertOrder", err.Error())
+			return err
+		}
+	}
+	if checkOrder.Users != user && checkOrder.Number == order {
+		return s.AnotherUser
+	} else if checkOrder.Users == user && checkOrder.Number == order {
+		return s.ThisUser
+	}
 	return nil
 }
+
+// func (s *Storage) InsertOrder(ctx context.Context, user string, order string) error {
+// 	now := time.Now()
+//
+// 	bonusesWithdrawn := float32(0)
+//
+// 	userOrder := &entity.Orders{
+// 		Users:            user,
+// 		Number:           order,
+// 		UploadedAt:       now.Format(time.RFC3339),
+// 		Status:           "NEW",
+// 		BonusesWithdrawn: bonusesWithdrawn,
+// 	}
+// 	validOrder := luna.CheckValidOrder(order)
+// 	if !validOrder {
+// 		s.Logger.Debug("InsertOrder", "no valid", validOrder, "status", "invalid order format")
+// 		return s.OrderFormat
+// 	}
+//
+// 	db := bun.NewDB(s.DB, pgdialect.New())
+//
+// 	var checkOrder entity.Orders
+//
+// 	err := db.NewSelect().
+// 		Model(&checkOrder).
+// 		Where(`"number" = ?`, order).
+// 		Scan(ctx)
+// 	if errors.Is(err, nil) {
+// 		// Заказ существует
+// 		if checkOrder.Users == user {
+// 			// Заказ принадлежит текущему пользователю
+// 			s.Logger.Debug("current user order", "this user", checkOrder.Users)
+// 			return s.ThisUser
+// 		}
+// 		// Заказ принадлежит другому пользователю
+// 		s.Logger.Debug("another user order", "another user", checkOrder.Users)
+// 		return s.AnotherUser
+// 	}
+//
+// 	// Заказ не существует, вставьте его
+// 	_, err = db.NewInsert().
+// 		Model(userOrder).
+// 		Exec(ctx)
+// 	if err != nil {
+// 		s.Error("error writing data", "usecase InsertOrder", err.Error())
+// 		return err
+// 	}
+//
+// 	return nil
+// }
 
 func (s *Storage) GetOrders(ctx context.Context, user string) ([]byte, error) {
 	var (
