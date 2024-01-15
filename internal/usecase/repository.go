@@ -146,7 +146,12 @@ func (s *Storage) GetOrders(ctx context.Context, user string) ([]byte, error) {
 			return nil, err
 		}
 
-		allOrders = append(allOrders, en)
+		allOrders = append(allOrders, entity.Orders{
+			Number:     en.Number,
+			Status:     en.Status,
+			Accrual:    en.Accrual,
+			UploadedAt: en.UploadedAt,
+		})
 	}
 
 	result, err := json.Marshal(allOrders)
