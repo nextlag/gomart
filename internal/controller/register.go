@@ -16,19 +16,19 @@ import (
 
 // Register представляет собой контроллер для обработки регистрации пользователя.
 type Register struct {
-	uc  *usecase.UseCase // UseCase для обработки бизнес-логики регистрации
+	uc  UseCase // UseCase для обработки бизнес-логики регистрации
 	log *slog.Logger
 	er  *usecase.AllErr
 }
 
 // NewRegister создает новый экземпляр контроллера Register.
-func NewRegister(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) *Register {
+func NewRegister(uc UseCase, log *slog.Logger, er *usecase.AllErr) *Register {
 	return &Register{uc: uc, log: log, er: er}
 }
 
 // ServeHTTP обрабатывает HTTP-запросы для регистрации пользователя.
 func (h *Register) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	user := h.uc.GetEntity().User
+	user := h.uc.Do().GetEntity()
 	// Декодируем JSON-данные из тела запроса в структуру Credentials
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()

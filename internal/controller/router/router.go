@@ -24,7 +24,7 @@ func SetupRouter(handler *chi.Mux, log *slog.Logger, uc *usecase.UseCase, er *us
 	handler.Group(func(r chi.Router) {
 		r.Post("/api/user/register", h.Register)
 		r.Post("/api/user/login", h.Authentication)
-		r.With(auth.CookieAuthentication(uc, log, er)).Group(func(r chi.Router) {
+		r.With(auth.CookieAuthentication(log, er)).Group(func(r chi.Router) {
 			r.Post("/api/user/orders", h.PostOrders)
 			r.Post("/api/user/balance/withdraw", h.Withdraw)
 			r.Post("/api/user/withdrawals", h.Withdrawals)

@@ -12,7 +12,7 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
-  "login": "user",
+  "login": "user1",
   "password": "12345"
 }
 

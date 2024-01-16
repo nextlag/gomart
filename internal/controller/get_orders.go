@@ -9,12 +9,12 @@ import (
 )
 
 type GetOrders struct {
-	uc  *usecase.UseCase
+	uc  UseCase
 	log *slog.Logger
 	er  *usecase.AllErr
 }
 
-func NewGetOrders(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) *GetOrders {
+func NewGetOrders(uc UseCase, log *slog.Logger, er *usecase.AllErr) *GetOrders {
 	return &GetOrders{uc: uc, log: log, er: er}
 }
 

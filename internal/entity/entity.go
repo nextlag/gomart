@@ -1,9 +1,5 @@
 package entity
 
-type Entity interface {
-	GetEntity() *AllEntity
-}
-
 // User отражает информацию о зарегистрированных пользователях
 type User struct {
 	Login     string  `json:"login"`
@@ -37,6 +33,6 @@ type OrderUpdateFromAccural struct {
 }
 
 type AllEntity struct {
-	User
-	Orders
+	*User
+	*Orders
 }

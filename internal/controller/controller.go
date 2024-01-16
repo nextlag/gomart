@@ -9,6 +9,7 @@ import (
 )
 
 type UseCase interface {
+	Do() *usecase.UseCase
 	DoRegister(ctx context.Context, login, password string, r *http.Request) error
 	DoAuth(ctx context.Context, login, password string, r *http.Request) error
 	DoInsertOrder(ctx context.Context, user, order string) error
@@ -27,7 +28,7 @@ type Handlers struct {
 	Withdrawals    http.HandlerFunc
 }
 
-func New(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) *Handlers {
+func New(uc UseCase, log *slog.Logger, er *usecase.AllErr) *Handlers {
 	return &Handlers{
 		Authentication: NewLogin(uc, log, er).ServeHTTP,
 		Balance:        NewBalance(uc, log, er).ServeHTTP,

@@ -31,7 +31,7 @@ func (s *Storage) Register(ctx context.Context, login string, password string) e
 		Login:    login,
 		Password: password,
 	}
-	db := bun.NewDB(s.Postgres.DB, pgdialect.New())
+	db := bun.NewDB(s.DB, pgdialect.New())
 
 	_, err := db.NewInsert().
 		Model(user).
@@ -49,7 +49,7 @@ func (s *Storage) Register(ctx context.Context, login string, password string) e
 func (s *Storage) Auth(ctx context.Context, login, password string) error {
 	var user entity.User
 
-	db := bun.NewDB(s.Postgres.DB, pgdialect.New())
+	db := bun.NewDB(s.DB, pgdialect.New())
 
 	err := db.NewSelect().
 		Model(&user).
@@ -120,7 +120,7 @@ func (s *Storage) GetOrders(ctx context.Context, user string) ([]byte, error) {
 		allOrders []entity.Orders
 		userOrder entity.Orders
 	)
-	db := bun.NewDB(s.Postgres.DB, pgdialect.New())
+	db := bun.NewDB(s.DB, pgdialect.New())
 
 	rows, err := db.NewSelect().
 		Model(&userOrder).

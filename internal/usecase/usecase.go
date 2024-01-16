@@ -20,23 +20,26 @@ type Repository interface {
 	// GetBalance - получение текущего баланса пользователя
 	GetBalance(ctx context.Context, login string) (float32, float32, error)
 	// Debit - запрос на списание средств
-	Debit(ctx context.Context, user, numOrder string, sum float32) error
+	Debit(ctx context.Context, user, order string, sum float32) error
 }
 
 type UseCase struct {
 	r Repository // interface Repository
-	e *entity.AllEntity
+	e entity.AllEntity
 }
 
 func New(r Repository) *UseCase {
-	e := &entity.AllEntity{}
+	e := UseCase{}.e
 	return &UseCase{r, e}
 }
 
 func (uc *UseCase) GetEntity() *entity.AllEntity {
-	return uc.e
+	return &uc.e
 }
 
+func (uc *UseCase) Do() *UseCase {
+	return uc
+}
 func (uc *UseCase) DoRegister(ctx context.Context, login, password string, _ *http.Request) error {
 	err := uc.r.Register(ctx, login, password)
 	return err
@@ -60,7 +63,7 @@ func (uc *UseCase) DoGetBalance(ctx context.Context, login string) (float32, flo
 	return b, w, err
 }
 
-func (uc *UseCase) DoDebit(ctx context.Context, user, numOrder string, sum float32) error {
-	err := uc.r.Debit(ctx, user, numOrder, sum)
+func (uc *UseCase) DoDebit(ctx context.Context, user, order string, sum float32) error {
+	err := uc.r.Debit(ctx, user, order, sum)
 	return err
 }

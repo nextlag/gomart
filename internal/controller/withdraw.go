@@ -35,7 +35,7 @@ func (h *Withdraw) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.log.Debug("debet request", "user", user, "order", request.Order, "sum", request.Sum)
-	err := h.uc.DoDebit(r.Context(), user, request.Order, request.Sum)
+	err := h.uc.Do().DoDebit(r.Context(), user, request.Order, request.Sum)
 	switch {
 	case errors.Is(err, h.er.NoBalance):
 		h.log.Info("на счету недостаточно средств", "NoBalance", h.er.NoBalance.Error())

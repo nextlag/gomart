@@ -12,12 +12,12 @@ import (
 )
 
 type PostOrders struct {
-	uc  *usecase.UseCase
+	uc  UseCase
 	log *slog.Logger
 	er  *usecase.AllErr
 }
 
-func NewPostOrders(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) *PostOrders {
+func NewPostOrders(uc UseCase, log *slog.Logger, er *usecase.AllErr) *PostOrders {
 	return &PostOrders{uc: uc, log: log, er: er}
 }
 

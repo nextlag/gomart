@@ -11,17 +11,17 @@ import (
 )
 
 type Login struct {
-	uc  *usecase.UseCase
+	uc  UseCase
 	log *slog.Logger
 	er  *usecase.AllErr
 }
 
-func NewLogin(uc *usecase.UseCase, log *slog.Logger, er *usecase.AllErr) *Login {
+func NewLogin(uc UseCase, log *slog.Logger, er *usecase.AllErr) *Login {
 	return &Login{uc: uc, log: log, er: er}
 }
 
 func (h *Login) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	user := h.uc.GetEntity().User
+	user := h.uc.Do().GetEntity()
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
