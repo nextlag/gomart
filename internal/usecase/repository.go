@@ -164,8 +164,6 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 		Where("login = ?", login).
 		Scan(ctx, &balance, &withdrawn)
 	if err != nil {
-		// Возвращаем другие ошибки
-		uc.log.Error("error while scanning data", "usecase GetBalance", err.Error())
 		return 0, 0, err
 	}
 

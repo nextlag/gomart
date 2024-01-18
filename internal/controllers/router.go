@@ -47,7 +47,7 @@ func (c Controller) Router(handler *chi.Mux) *chi.Mux {
 		r.With(auth.CookieAuthentication(c.log, c.er)).Group(func(r chi.Router) {
 			r.Post("/api/user/orders", h.PostOrders)
 			r.Post("/api/user/balance/withdraw", h.Withdraw)
-			r.Post("/api/user/withdrawals", h.Withdrawals)
+			// r.Post("/api/user/withdrawals", h.Withdrawals)
 			r.Get("/api/user/balance", h.Balance)
 			r.Get("/api/user/orders", h.GetOrders)
 		})
