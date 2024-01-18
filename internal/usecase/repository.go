@@ -66,7 +66,6 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 	}
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
-		uc.log.Debug("InsertOrder", "no valid", validOrder, "status", "invalid order format")
 		return uc.Er().OrderFormat
 	}
 
@@ -170,6 +169,11 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 
 // Debit processes the debit operation for a user, updating the balance and withdrawn amounts.
 func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) error {
+	validOrder := luna.CheckValidOrder(order)
+	if !validOrder {
+		return uc.Er().OrderFormat
+	}
+
 	// Инициализация подключения к базе данных
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
