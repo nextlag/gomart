@@ -15,98 +15,82 @@ import (
 func GetAccrual(order entity.Orders, cfg config.HTTPServer, log Logger) entity.OrderUpdateFromAccural {
 	client := resty.New().SetBaseURL(cfg.Accrual)
 	var orderUpdate entity.OrderUpdateFromAccural
-
-	maxWaitTime := 5 * time.Minute  // Максимальное время ожидания
-	waitInterval := 3 * time.Second // Интервал ожидания
-
-	startTime := time.Now()
-
-	for elapsed := time.Since(startTime); elapsed < maxWaitTime; elapsed = time.Since(startTime) {
+	for {
 		resp, err := client.R().
 			SetResult(&orderUpdate).
 			Get("/api/orders/" + order.Number)
-
 		if err != nil {
-			log.Error("error when sending a GET request to the accrual system:", "error GetAccrual", err.Error())
-			time.Sleep(waitInterval)
-			continue
+			log.Error("got error trying to send a get request to accrual", err.Error())
+			break
 		}
-
 		switch resp.StatusCode() {
 		case 429:
-			// Пауза 3 секунды при получении кода 429 (слишком много запросов)
-			time.Sleep(waitInterval)
-			continue
+			time.Sleep(3 * time.Second)
 		case 204:
-			// Пауза 1 секунда при получении кода 204 (успешный запрос, но нет данных)
-			time.Sleep(waitInterval)
-			continue
+			time.Sleep(1 * time.Second)
 		}
 
 		if resp.StatusCode() == 500 {
-			log.Error("internal server error in the accrual system:", nil)
-			time.Sleep(waitInterval)
-			continue
+			log.Error("internal server error in accrual system", err.Error())
+			break
 		}
 
 		if orderUpdate.Status == "INVALID" || orderUpdate.Status == "PROCESSED" {
-			return orderUpdate
+			break
 		}
-
-		// Пауза перед следующей попыткой
-		time.Sleep(waitInterval)
 	}
-
 	return orderUpdate
 }
 
 func (uc *UseCase) Sync() {
-	ticker := time.NewTicker(tick)
 	ctx := context.Background()
 
-	for range ticker.C {
-		var allOrders []entity.Orders
+	for {
+		select {
+		case <-time.After(tick):
+			var allOrders []entity.Orders
 
-		order := entity.Orders{}
+			order := entity.Orders{}
 
-		db := bun.NewDB(uc.DB, pgdialect.New())
+			db := bun.NewDB(uc.DB, pgdialect.New())
 
-		rows, err := db.NewSelect().
-			Model(order).
-			Where("status != ? AND status != ?", "PROCESSED", "INVALID").
-			Rows(ctx)
-		if err != nil {
-			return
-		}
-		err = rows.Err()
-		if err != nil {
-			return
-		}
-
-		for rows.Next() {
-			var orderRow entity.Orders
-			err = rows.Scan(&orderRow.Users, &orderRow.Number, &orderRow.Status, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn, &orderRow.Accrual)
-			if err != nil {
-				uc.log.Error("error scanning data", err.Error())
-			}
-			allOrders = append(allOrders, entity.Orders{
-				Number:     orderRow.Number,
-				UploadedAt: orderRow.UploadedAt,
-				Status:     orderRow.Status,
-				Accrual:    orderRow.Accrual,
-				Users:      orderRow.Users,
-			})
-		}
-		err = rows.Close()
-		if err != nil {
-			return
-		}
-
-		for _, unfinishedOrder := range allOrders {
-			finishedOrder := GetAccrual(unfinishedOrder, uc.cfg, uc.log)
-			err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.Users)
+			rows, err := db.NewSelect().
+				Model(order).
+				Where("status != ? AND status != ?", "PROCESSED", "INVALID").
+				Rows(ctx)
 			if err != nil {
 				return
+			}
+			err = rows.Err()
+			if err != nil {
+				return
+			}
+
+			for rows.Next() {
+				var orderRow entity.Orders
+				err = rows.Scan(&orderRow.Users, &orderRow.Number, &orderRow.Status, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn, &orderRow.Accrual)
+				if err != nil {
+					uc.log.Error("error scanning data", err.Error())
+				}
+				allOrders = append(allOrders, entity.Orders{
+					Number:     orderRow.Number,
+					UploadedAt: orderRow.UploadedAt,
+					Status:     orderRow.Status,
+					Accrual:    orderRow.Accrual,
+					Users:      orderRow.Users,
+				})
+			}
+			err = rows.Close()
+			if err != nil {
+				return
+			}
+
+			for _, unfinishedOrder := range allOrders {
+				finishedOrder := GetAccrual(unfinishedOrder, uc.cfg, uc.log)
+				err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.Users)
+				if err != nil {
+					return
+				}
 			}
 		}
 	}
