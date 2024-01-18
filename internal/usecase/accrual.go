@@ -31,7 +31,6 @@ func GetAccrual(order entity.Orders, cfg config.HTTPServer, log Logger) entity.O
 		}
 
 		if resp.StatusCode() == 500 {
-			log.Error("internal server error in accrual system", err.Error())
 			break
 		}
 
@@ -43,54 +42,53 @@ func GetAccrual(order entity.Orders, cfg config.HTTPServer, log Logger) entity.O
 }
 
 func (uc *UseCase) Sync() {
+	ticker := time.NewTicker(tick)
 	ctx := context.Background()
 
-	for {
-		select {
-		case <-time.After(tick):
-			var allOrders []entity.Orders
+	for range ticker.C {
 
-			order := entity.Orders{}
+		var allOrders []entity.Orders
 
-			db := bun.NewDB(uc.DB, pgdialect.New())
+		order := entity.Orders{}
 
-			rows, err := db.NewSelect().
-				Model(order).
-				Where("status != ? AND status != ?", "PROCESSED", "INVALID").
-				Rows(ctx)
+		db := bun.NewDB(uc.DB, pgdialect.New())
+
+		rows, err := db.NewSelect().
+			Model(order).
+			Where("status != ? AND status != ?", "PROCESSED", "INVALID").
+			Rows(ctx)
+		if err != nil {
+			return
+		}
+		err = rows.Err()
+		if err != nil {
+			return
+		}
+
+		for rows.Next() {
+			var orderRow entity.Orders
+			err = rows.Scan(&orderRow.Users, &orderRow.Number, &orderRow.Status, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn, &orderRow.Accrual)
+			if err != nil {
+				uc.log.Error("error scanning data", err.Error())
+			}
+			allOrders = append(allOrders, entity.Orders{
+				Number:     orderRow.Number,
+				UploadedAt: orderRow.UploadedAt,
+				Status:     orderRow.Status,
+				Accrual:    orderRow.Accrual,
+				Users:      orderRow.Users,
+			})
+		}
+		err = rows.Close()
+		if err != nil {
+			return
+		}
+
+		for _, unfinishedOrder := range allOrders {
+			finishedOrder := GetAccrual(unfinishedOrder, uc.cfg, uc.log)
+			err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.Users)
 			if err != nil {
 				return
-			}
-			err = rows.Err()
-			if err != nil {
-				return
-			}
-
-			for rows.Next() {
-				var orderRow entity.Orders
-				err = rows.Scan(&orderRow.Users, &orderRow.Number, &orderRow.Status, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn, &orderRow.Accrual)
-				if err != nil {
-					uc.log.Error("error scanning data", err.Error())
-				}
-				allOrders = append(allOrders, entity.Orders{
-					Number:     orderRow.Number,
-					UploadedAt: orderRow.UploadedAt,
-					Status:     orderRow.Status,
-					Accrual:    orderRow.Accrual,
-					Users:      orderRow.Users,
-				})
-			}
-			err = rows.Close()
-			if err != nil {
-				return
-			}
-
-			for _, unfinishedOrder := range allOrders {
-				finishedOrder := GetAccrual(unfinishedOrder, uc.cfg, uc.log)
-				err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.Users)
-				if err != nil {
-					return
-				}
 			}
 		}
 	}
