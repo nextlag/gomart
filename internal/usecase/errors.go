@@ -4,6 +4,9 @@ import (
 	"errors"
 )
 
+type ErrRegister struct {
+	NoLogin error
+}
 type ErrorAuth struct {
 	Auth  error // Auth ошибка аутентификации
 	Token error // Token неверная сигнатура токена
@@ -38,6 +41,7 @@ type ErrDebit struct {
 }
 
 type AllErr struct {
+	*ErrRegister
 	*ErrorAuth
 	*ErrCommon
 	*ErrAuthentication
@@ -48,6 +52,9 @@ type AllErr struct {
 
 func NewErr() *AllErr {
 	return &AllErr{
+		&ErrRegister{
+			NoLogin: errors.New("login is already taken"),
+		},
 		&ErrorAuth{
 			Auth:  errors.New("authentication error"),
 			Token: errors.New("signature is invalid"),

@@ -26,7 +26,7 @@ func (c Controller) Withdraw(w http.ResponseWriter, r *http.Request) {
 	err := c.uc.Do().DoDebit(r.Context(), user, request.Order, request.Sum)
 	switch {
 	case errors.Is(err, c.er.NoBalance):
-		c.log.Info("на счету недостаточно средств", "NoBalance", c.er.NoBalance.Error())
+		c.log.Error("there are insufficient funds in the account", "NoBalance", c.er.NoBalance.Error())
 		http.Error(w, c.er.NoBalance.Error(), http.StatusPaymentRequired)
 		return
 	case errors.Is(err, c.er.OrderFormat):

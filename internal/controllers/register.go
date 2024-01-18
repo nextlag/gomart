@@ -45,7 +45,7 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case isPGError && pqErr.Code == "23505":
 			// Если дубликат логина - возвращаем конфликт
-			http.Error(w, "login is already token", http.StatusConflict)
+			http.Error(w, c.er.NoLogin.Error(), http.StatusConflict)
 		default:
 			// В противном случае возвращаем внутреннюю ошибку сервера
 			http.Error(w, c.er.InternalServer.Error(), http.StatusInternalServerError)
