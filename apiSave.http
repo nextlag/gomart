@@ -54,6 +54,6 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
-  "order": "4412014359702594",
-  "sum": 751
+  "order": "1641562",
+  "sum": 71
 }

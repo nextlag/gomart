@@ -199,10 +199,16 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 		_, err = db.NewInsert().
 			Model(userOrder).
 			Exec(ctx)
-
 		if err != nil {
-			return err
+			// Заказ существует
+			if userOrder.Users == user {
+				// Заказ принадлежит текущему пользователю
+				return uc.Er().ThisUser
+			}
+			// Заказ принадлежит другому пользователю
+			return uc.Er().AnotherUser
 		}
+		return err
 	}
 
 	// Получение текущего баланса пользователя
