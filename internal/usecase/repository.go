@@ -270,7 +270,6 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 		var orderRow entity.Orders
 		err = rows.Scan(&orderRow.Users, &orderRow.Number, &orderRow.Status, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn, &orderRow.Accrual)
 		if err != nil {
-			uc.log.Error("error scanning data", err)
 			return nil, err
 		}
 
@@ -286,7 +285,6 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 	}
 	result, err := json.Marshal(allOrders)
 	if err != nil {
-		uc.log.Error("error marshaling allOrders", "usecase GetWithdrawals", err.Error())
 		return nil, err
 	}
 	return result, nil
