@@ -19,10 +19,10 @@ const LoginKey authContextKey = "login"
 // она обслуживает запросы и вставляет логин в контекст.
 // В противном случае она не позволяет продолжить выполнение и возвращает статус кода 401 (если пользователь не аутентифицирован),
 // или 500 (если произошла внутренняя ошибка сервера).
-func CookieAuthentication(log usecase.Logger, er *usecase.AllErr) func(next http.Handler) http.Handler {
+func CookieAuthentication(log usecase.Logger, er *usecase.UCErr) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			login, err := GetCookie(log, r, er)
+			login, err := GetCookie(log, r)
 
 			switch {
 			case errors.Is(err, er.Token):

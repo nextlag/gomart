@@ -10,24 +10,25 @@ import (
 
 func (c Controller) Authentication(w http.ResponseWriter, r *http.Request) {
 	user := c.uc.Do().GetEntity()
+	er := c.uc.Do().Er()
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&user); err != nil {
 		c.log.Error("decode JSON", "error Login handler", err.Error())
-		http.Error(w, c.er.DecodeJSON.Error(), http.StatusBadRequest)
+		http.Error(w, er.DecodeJSON.Error(), http.StatusBadRequest)
 		return
 	}
 	if err := c.uc.DoAuth(r.Context(), user.Login, user.Password, r); err != nil {
 		c.log.Error("incorrect login or password", "error Login handler", err.Error())
-		http.Error(w, c.er.Unauthorized.Error(), http.StatusUnauthorized)
+		http.Error(w, er.Unauthorized.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	jwtToken, err := auth.SetAuth(user.Login, c.log, w)
 	if err != nil {
 		c.log.Error("can't set cookie", "error Login handler", err.Error())
-		http.Error(w, c.er.NoCookie.Error(), http.StatusInternalServerError)
+		http.Error(w, er.NoCookie.Error(), http.StatusInternalServerError)
 		return
 	}
 	l := fmt.Sprintf("[%s] success authenticated", user.Login)

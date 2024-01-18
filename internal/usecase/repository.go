@@ -67,7 +67,7 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
 		uc.log.Debug("InsertOrder", "no valid", validOrder, "status", "invalid order format")
-		return uc.er.OrderFormat
+		return uc.Er().OrderFormat
 	}
 
 	db := bun.NewDB(uc.DB, pgdialect.New())
@@ -82,12 +82,10 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 		// Заказ существует
 		if checkOrder.Users == user {
 			// Заказ принадлежит текущему пользователю
-			uc.log.Debug("current user order", "this user", checkOrder.Users)
-			return uc.er.ThisUser
+			return uc.Er().ThisUser
 		}
 		// Заказ принадлежит другому пользователю
-		uc.log.Debug("another user order", "another user", checkOrder.Users)
-		return uc.er.AnotherUser
+		return uc.Er().AnotherUser
 	}
 
 	// Заказ не существует, вставьте его
@@ -172,18 +170,6 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 
 // Debit processes the debit operation for a user, updating the balance and withdrawn amounts.
 func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) error {
-	// Получение текущего баланса пользователя
-	var checkOrder entity.Orders
-	balance, _, err := uc.GetBalance(ctx, user)
-	if err != nil {
-		uc.log.Error("error get balance from GetBalance method", "usecase Debit", err.Error())
-		return err
-	}
-	// Проверка наличия достаточного баланса для списания бонусов
-	if balance < sum {
-		return uc.er.NoBalance
-	}
-
 	// Инициализация подключения к базе данных
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
@@ -200,18 +186,31 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 	}
 
 	// Проверка существования заказа в базе данных
-	err = db.NewSelect().
+	err := db.NewSelect().
 		Model(&userOrder).
 		Where(`"number" = ?`, order).
 		Scan(ctx)
-	if errors.Is(err, nil) {
-		// Заказ существует
-		if checkOrder.Users == user {
-			// Заказ принадлежит текущему пользователю
-			return uc.er.ThisUser
+	if err != nil {
+		// Заказ не существует, добавляем новый заказ в базу данных
+		_, err = db.NewInsert().
+			Model(userOrder).
+			Exec(ctx)
+
+		if err != nil {
+			return err
 		}
-		// Заказ принадлежит другому пользователю
-		return uc.er.AnotherUser
+	}
+
+	// Получение текущего баланса пользователя
+	balance, _, err := uc.GetBalance(ctx, user)
+	if err != nil {
+		uc.log.Error("error get balance from GetBalance method", "usecase Debit", err.Error())
+		return err
+	}
+
+	// Проверка наличия достаточного баланса для списания бонусов
+	if balance < sum {
+		return uc.Er().NoBalance
 	}
 
 	// Обновление баланса пользователя после списания бонусов

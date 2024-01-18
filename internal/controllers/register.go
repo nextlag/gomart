@@ -15,12 +15,13 @@ import (
 // Register обрабатывает HTTP-запросы для регистрации пользователя.
 func (c Controller) Register(w http.ResponseWriter, r *http.Request) {
 	user := c.uc.Do().GetEntity()
+	er := c.uc.Do().Er()
 	// Декодируем JSON-данные из тела запроса в структуру Credentials
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&user); err != nil {
 		c.log.Error("Decode JSON", "Login", user.Login, "error Register handler", err.Error())
-		http.Error(w, c.er.DecodeJSON.Error(), http.StatusBadRequest)
+		http.Error(w, er.DecodeJSON.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -28,7 +29,7 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case len(user.Login) == 0:
 		c.log.Info("error: empty login")
-		http.Error(w, c.er.Request.Error(), http.StatusBadRequest)
+		http.Error(w, er.Request.Error(), http.StatusBadRequest)
 		return
 	case len(user.Password) == 0:
 		c.log.Info("generating password")
@@ -45,10 +46,10 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case isPGError && pqErr.Code == "23505":
 			// Если дубликат логина - возвращаем конфликт
-			http.Error(w, c.er.NoLogin.Error(), http.StatusConflict)
+			http.Error(w, er.NoLogin.Error(), http.StatusConflict)
 		default:
 			// В противном случае возвращаем внутреннюю ошибку сервера
-			http.Error(w, c.er.InternalServer.Error(), http.StatusInternalServerError)
+			http.Error(w, er.InternalServer.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -57,7 +58,7 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request) {
 	jwt, err := auth.SetAuth(user.Login, c.log, w)
 	if err != nil {
 		c.log.Error("can't set cookie: ", "error controllers|register", err.Error())
-		http.Error(w, c.er.InternalServer.Error(), http.StatusInternalServerError)
+		http.Error(w, er.InternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
 	c.log.Debug("authentication", "login", user.Login, "token", jwt)

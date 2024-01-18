@@ -62,7 +62,7 @@ func SetAuth(login string, log usecase.Logger, w http.ResponseWriter) (string, e
 
 // getLogin извлекает логин пользователя из предоставленного токена JWT.
 // A function used to get a user's login using a JWT. It accepts a JWT and returns a login and error.
-func getLogin(tokenString string, log usecase.Logger, er *usecase.AllErr) (string, error) {
+func getLogin(tokenString string, log usecase.Logger) (string, error) {
 	log.Debug("getLogin", "received token", tokenString)
 
 	claims := &Claims{}
@@ -75,7 +75,7 @@ func getLogin(tokenString string, log usecase.Logger, er *usecase.AllErr) (strin
 	})
 	if err != nil {
 		log.Error("error parsing token", "getLogin", err.Error())
-		return "", er.Token
+		return "", usecase.Token
 	}
 	if !token.Valid {
 		log.Error("token is not valid", nil)
@@ -86,16 +86,16 @@ func getLogin(tokenString string, log usecase.Logger, er *usecase.AllErr) (strin
 }
 
 // GetCookie извлекает логин пользователя из кука "Auth".
-func GetCookie(log usecase.Logger, r *http.Request, er *usecase.AllErr) (string, error) {
+func GetCookie(log usecase.Logger, r *http.Request) (string, error) {
 	// Извлечь подписанную куку логина из запроса.
 	signedLogin, err := r.Cookie(Cookie)
 	if err != nil {
 		log.Error("error receiving cookie", "error GetCookie", nil)
-		return "", er.Auth
+		return "", usecase.Auth
 	}
 
 	// Извлекает логин из токена JWT в куке.
-	login, err := getLogin(signedLogin.Value, log, er)
+	login, err := getLogin(signedLogin.Value, log)
 	if err != nil {
 		log.Error("error reading cookie", "error GetCookie", err.Error())
 		return "", err

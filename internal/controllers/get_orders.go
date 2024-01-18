@@ -8,10 +8,11 @@ import (
 
 func (c Controller) GetOrders(w http.ResponseWriter, r *http.Request) {
 	user, _ := r.Context().Value(auth.LoginKey).(string)
+	er := c.uc.Do().Er()
 	result, err := c.uc.DoGetOrders(r.Context(), user)
 	if err != nil {
-		c.log.Debug("Обработчик GetOrders", "ошибка", err.Error())
-		http.Error(w, c.er.InternalServer.Error(), http.StatusInternalServerError)
+		c.log.Debug("handler GetOrders", "error", err.Error())
+		http.Error(w, er.InternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
 

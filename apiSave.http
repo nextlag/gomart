@@ -4,6 +4,17 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
+  "login": "solo",
+  "password": "12345"
+}
+
+### POST authentication solo
+POST http://localhost:8080/api/user/login
+Host: localhost:8080
+Content-Type: application/json
+CCookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InVzZXIzIn0.lX5RePcCJDkQkp8isPU2MHJ7WZ5l7jq4x93jKg4Fg1I
+
+{
   "login": "user3",
   "password": "12345"
 }
@@ -12,23 +23,13 @@ Content-Type: application/json
 POST http://localhost:8080/api/user/login
 Host: localhost:8080
 Content-Type: application/json
-CCookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG8ifQ.rLfRajrW0gUYnVIEkTLGCCqhFHfQvDMkFHLoO6fo0y0
+Cookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG8ifQ.rLfRajrW0gUYnVIEkTLGCCqhFHfQvDMkFHLoO6fo0y0
 
 {
   "login": "solo",
   "password": "12345"
 }
 
-### POST authentication user
-POST http://localhost:8080/api/user/login
-Host: localhost:8080
-Content-Type: application/json
-Cookie: Auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InVzZXIifQ.7ChccM-lJ5ApcXu7pX5iAE74tSn2um0lAgrCp5hkjbk
-
-{
-  "login": "user",
-  "password": "12345"
-}
 
 ### Get orders
 GET http://localhost:8080/api/user/orders
@@ -43,8 +44,9 @@ POST http://localhost:8080/api/user/orders
 Host: localhost:8080
 Content-Type: text/plain
 
+#12345678903
 #31722088874
-12345678903
+2377225624
 
 ### POST списание бонусов
 POST  http://localhost:8080/api/user/balance/withdraw
@@ -52,6 +54,6 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
-  "order": "2377225624",
+  "order": "4412014359702594",
   "sum": 751
 }

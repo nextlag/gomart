@@ -34,7 +34,6 @@ func main() {
 	var (
 		log = logger.SetupLogger()
 		cfg = config.Cfg
-		er  = usecase.NewErr()
 	)
 
 	log.Debug("initialized flags",
@@ -57,7 +56,7 @@ func main() {
 	uc := usecase.New(db, log)
 
 	// init controllers
-	controller := controllers.New(uc, log, er)
+	controller := controllers.New(uc, log)
 	r := chi.NewRouter()
 	r.Mount("/", controller.Router(r))
 

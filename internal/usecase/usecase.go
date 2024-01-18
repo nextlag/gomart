@@ -34,15 +34,13 @@ type UseCase struct {
 	repo   Repository        // interface Repository
 	log    Logger            // interface Logger
 	entity *entity.AllEntity // struct entity
-	DB     *sql.DB           // db
-	er     *AllErr           // struct errors
+	DB     *sql.DB
 }
 
 func New(r Repository, l Logger) *UseCase {
 	var db *sql.DB
 	e := &entity.AllEntity{}
-	er := &AllErr{}
-	return &UseCase{repo: r, log: l, entity: e, DB: db, er: er}
+	return &UseCase{repo: r, log: l, entity: e, DB: db}
 }
 func (uc *UseCase) GetEntity() *entity.AllEntity {
 	return uc.entity

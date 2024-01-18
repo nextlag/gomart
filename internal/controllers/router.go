@@ -26,11 +26,10 @@ type UseCase interface {
 type Controller struct {
 	uc  UseCase
 	log usecase.Logger
-	er  *usecase.AllErr
 }
 
-func New(uc UseCase, log usecase.Logger, er *usecase.AllErr) *Controller {
-	return &Controller{uc: uc, log: log, er: er}
+func New(uc UseCase, log usecase.Logger) *Controller {
+	return &Controller{uc: uc, log: log}
 }
 
 func (c Controller) Router(handler *chi.Mux) *chi.Mux {
@@ -39,12 +38,12 @@ func (c Controller) Router(handler *chi.Mux) *chi.Mux {
 	handler.Use(middleware.Logger)
 	handler.Use(gzip.New())
 
-	h := New(c.uc, c.log, c.er)
+	h := New(c.uc, c.log)
 
 	handler.Group(func(r chi.Router) {
 		r.Post("/api/user/register", h.Register)
 		r.Post("/api/user/login", h.Authentication)
-		r.With(auth.CookieAuthentication(c.log, c.er)).Group(func(r chi.Router) {
+		r.With(auth.CookieAuthentication(c.log, c.uc.Do().Er())).Group(func(r chi.Router) {
 			r.Post("/api/user/orders", h.PostOrders)
 			r.Post("/api/user/balance/withdraw", h.Withdraw)
 			// r.Post("/api/user/withdrawals", h.Withdrawals)

@@ -10,6 +10,7 @@ import (
 )
 
 func (c Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
+	er := c.uc.Do().Er()
 	// Получаем логин из контекста
 	user, _ := r.Context().Value(auth.LoginKey).(string)
 	c.log.Debug("get user PostOrders", "user", user)
@@ -19,30 +20,30 @@ func (c Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
 	order := string(body)
 	switch {
 	case order == "":
-		http.Error(w, c.er.RequestFormat.Error(), http.StatusBadRequest)
+		http.Error(w, er.RequestFormat.Error(), http.StatusBadRequest)
 		return
 	case err != nil:
 		c.log.Error("body reading error", "error PostOrder handler", err.Error())
-		http.Error(w, c.er.InternalServer.Error(), http.StatusInternalServerError)
+		http.Error(w, er.InternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = c.uc.DoInsertOrder(r.Context(), user, order)
 	switch {
-	case errors.Is(err, c.er.OrderFormat):
+	case errors.Is(err, er.OrderFormat):
 		c.log.Debug("insert Order 422", "error", err.Error())
-		http.Error(w, c.er.OrderFormat.Error(), http.StatusUnprocessableEntity)
+		http.Error(w, er.OrderFormat.Error(), http.StatusUnprocessableEntity)
 		return
-	case errors.Is(err, c.er.AnotherUser):
+	case errors.Is(err, er.AnotherUser):
 		c.log.Debug("insert Order 409", "error", err.Error())
-		http.Error(w, c.er.AnotherUser.Error(), http.StatusConflict)
+		http.Error(w, er.AnotherUser.Error(), http.StatusConflict)
 		return
-	case errors.Is(err, c.er.ThisUser):
+	case errors.Is(err, er.ThisUser):
 		c.log.Debug("insert Order 200", "error", err.Error())
-		http.Error(w, c.er.ThisUser.Error(), http.StatusOK)
+		http.Error(w, er.ThisUser.Error(), http.StatusOK)
 		return
 	default:
-		http.Error(w, c.er.OrderAccepted.Error(), http.StatusAccepted)
+		http.Error(w, er.OrderAccepted.Error(), http.StatusAccepted)
 	}
 
 	// Обработка успешного запроса
