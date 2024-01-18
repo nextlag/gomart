@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"net/http"
 
+	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/entity"
 )
 
@@ -33,16 +34,17 @@ type Repository interface {
 }
 
 type UseCase struct {
-	repo   Repository        // interface Repository
-	log    Logger            // interface Logger
+	repo   Repository // interface Repository
+	log    Logger     // interface Logger
+	cfg    config.HTTPServer
 	entity *entity.AllEntity // struct entity
 	DB     *sql.DB
 }
 
-func New(r Repository, l Logger) *UseCase {
+func New(r Repository, l Logger, cfg config.HTTPServer) *UseCase {
 	var db *sql.DB
 	e := &entity.AllEntity{}
-	return &UseCase{repo: r, log: l, entity: e, DB: db}
+	return &UseCase{repo: r, log: l, cfg: cfg, entity: e, DB: db}
 }
 func (uc *UseCase) GetEntity() *entity.AllEntity {
 	return uc.entity

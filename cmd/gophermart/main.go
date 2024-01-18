@@ -53,12 +53,14 @@ func main() {
 	defer db.Close()
 
 	// init usecase
-	uc := usecase.New(db, log)
+	uc := usecase.New(db, log, cfg)
 
 	// init controllers
 	controller := controllers.New(uc, log)
 	r := chi.NewRouter()
 	r.Mount("/", controller.Router(r))
+
+	go db.Sync()
 
 	// init server
 	srv := setupServer(r)

@@ -13,6 +13,8 @@ import (
 	"github.com/nextlag/gomart/pkg/luna"
 )
 
+const tick = time.Second * 1
+
 // Register registers a new user with the provided login and password.
 func (uc *UseCase) Register(ctx context.Context, login string, password string) error {
 	user := &entity.User{
