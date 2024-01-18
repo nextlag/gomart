@@ -93,7 +93,6 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 		Model(userOrder).
 		Exec(ctx)
 	if err != nil {
-		uc.log.Error("error writing data", "usecase InsertOrder", err.Error())
 		return err
 	}
 
@@ -114,7 +113,6 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 		Order("uploaded_at ASC").
 		Rows(ctx)
 	if err != nil {
-		uc.log.Error("error getting data", "usecase GetOrders", err.Error())
 		return nil, err
 	}
 
@@ -128,7 +126,6 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 		var en entity.Orders
 		err = rows.Scan(&en.Users, &en.Number, &en.Status, &en.Accrual, &en.UploadedAt, &en.BonusesWithdrawn)
 		if err != nil {
-			uc.log.Error("error scanning data", "usecase GetOrders", err.Error())
 			return nil, err
 		}
 
@@ -142,7 +139,6 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 
 	result, err := json.Marshal(allOrders)
 	if err != nil {
-		uc.log.Error("error marshaling allOrders", "usecase GetOrders", err.Error())
 		return nil, err
 	}
 	return result, nil
@@ -215,7 +211,6 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 	// Получение текущего баланса пользователя
 	balance, _, err := uc.GetBalance(ctx, user)
 	if err != nil {
-		uc.log.Error("error get balance from GetBalance method", "usecase Debit", err.Error())
 		return err
 	}
 
@@ -254,7 +249,6 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 		Order("uploaded_at ASC").
 		Rows(ctx)
 	if err != nil {
-		uc.log.Error("error getting data", "usecase GetOrders", err.Error())
 		return nil, err
 	}
 
