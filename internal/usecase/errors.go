@@ -1,6 +1,8 @@
 package usecase
 
-import "errors"
+import (
+	"errors"
+)
 
 type ErrAll struct {
 	ErrNoLogin        error
@@ -21,6 +23,7 @@ type ErrAll struct {
 	ErrGetOrders      error
 	ErrNoContent      error
 	ErrNoBalance      error
+	ErrNoRows         error
 }
 
 var (
@@ -42,6 +45,7 @@ var (
 	ErrGetOrders      = errors.New("error getting orders")
 	ErrNoContent      = errors.New("no information to answer")
 	ErrNoBalance      = errors.New("not enough balance")
+	ErrNoRows         = errors.New("no rows were found")
 )
 
 func (uc *UseCase) Err() *ErrAll {
@@ -64,5 +68,6 @@ func (uc *UseCase) Err() *ErrAll {
 		ErrGetOrders:      ErrGetOrders,
 		ErrNoContent:      ErrNoContent,
 		ErrNoBalance:      ErrNoBalance,
+		ErrNoRows:         ErrNoRows,
 	}
 }

@@ -21,6 +21,7 @@ type UseCase interface {
 	DoGetOrders(ctx context.Context, user string) ([]byte, error)
 	DoGetBalance(ctx context.Context, login string) (float32, float32, error)
 	DoDebit(ctx context.Context, user, numOrder string, sum float32) error
+	DoGetWithdrawals(ctx context.Context, user string) ([]byte, error)
 }
 
 type Controller struct {
@@ -46,7 +47,7 @@ func (c Controller) Router(handler *chi.Mux) *chi.Mux {
 		r.With(auth.CookieAuthentication(c.log, c.uc.Do().Err())).Group(func(r chi.Router) {
 			r.Post("/api/user/orders", h.PostOrders)
 			r.Post("/api/user/balance/withdraw", h.Withdraw)
-			// r.Post("/api/user/withdrawals", h.Withdrawals)
+			r.Get("/api/user/withdrawals", h.Withdrawals)
 			r.Get("/api/user/balance", h.Balance)
 			r.Get("/api/user/orders", h.GetOrders)
 		})

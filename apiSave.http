@@ -30,15 +30,6 @@ Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG8ifQ.rLfR
   "password": "12345"
 }
 
-
-### Get orders
-GET http://localhost:8080/api/user/orders
-
-### Get balance
-GET http://localhost:8080/api/user/balance
-
-
-
 ### POST request with cookie passed through headers and data in the body
 POST http://localhost:8080/api/user/orders
 Host: localhost:8080
@@ -57,3 +48,16 @@ Content-Type: application/json
   "order": "1641562",
   "sum": 71
 }
+
+
+### Get orders
+GET http://localhost:8080/api/user/orders
+
+### Get balance
+GET http://localhost:8080/api/user/balance
+
+### Get withdrawals
+GET http://localhost:8080/api/user/withdrawals
+
+
+

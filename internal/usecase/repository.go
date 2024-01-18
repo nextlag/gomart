@@ -98,7 +98,7 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 	return nil
 }
 
-// ErrGetOrders retrieves all orders for a specific user.
+// GetOrders retrieves all orders for a specific user.
 func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 	var (
 		allOrders []entity.Orders
@@ -234,4 +234,58 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 	}
 
 	return nil
+}
+
+func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, error) {
+
+	var (
+		allOrders []entity.Withdrawals
+		userOrder entity.Orders
+	)
+
+	// Инициализация подключения к базе данных
+	db := bun.NewDB(uc.DB, pgdialect.New())
+
+	rows, err := db.NewSelect().
+		Model(&userOrder).
+		Where("users = ? and bonuses_withdrawn != 0", user).
+		Order("uploaded_at ASC").
+		Rows(ctx)
+	if err != nil {
+		uc.log.Error("error getting data", "usecase GetOrders", err.Error())
+		return nil, err
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	noRows := true
+	for rows.Next() {
+		noRows = false
+		var orderRow entity.Orders
+		err = rows.Scan(&orderRow.Users, &orderRow.Number, &orderRow.Status, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn, &orderRow.Accrual)
+		if err != nil {
+			uc.log.Error("error scanning data", err)
+			return nil, err
+		}
+
+		allOrders = append(allOrders, entity.Withdrawals{
+			Order:            orderRow.Number,
+			Time:             orderRow.UploadedAt,
+			BonusesWithdrawn: orderRow.BonusesWithdrawn,
+		})
+	}
+
+	if noRows {
+		return nil, ErrNoRows
+	}
+	result, err := json.Marshal(allOrders)
+	if err != nil {
+		uc.log.Error("error marshaling allOrders", "usecase GetWithdrawals", err.Error())
+		return nil, err
+	}
+	return result, nil
 }

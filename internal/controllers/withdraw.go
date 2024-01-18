@@ -34,14 +34,14 @@ func (c Controller) Withdraw(w http.ResponseWriter, r *http.Request) {
 		c.log.Error("Withdraw OrderFormat", "error", err.Error())
 		http.Error(w, er.ErrOrderFormat.Error(), http.StatusUnprocessableEntity)
 		return
-	case errors.Is(err, er.ErrAnotherUser):
+	case errors.Is(err, er.ErrThisUser) || errors.Is(err, er.ErrAnotherUser):
 		c.log.Debug("withdraw", "user", user, "order", request.Order)
 		c.log.Error("Withdraw AnotherUser", "error", err.Error())
-		http.Error(w, "order is already loaded", http.StatusUnprocessableEntity)
+		http.Error(w, "order is already loaded", http.StatusConflict)
 		return
 	case err != nil:
 		c.log.Error("Withdraw handler", "error", err.Error())
-		http.Error(w, er.ErrInternalServer.Error(), http.StatusUnprocessableEntity)
+		http.Error(w, er.ErrInternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
 

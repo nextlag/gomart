@@ -1,44 +1,30 @@
 package controllers
 
-//
-// import (
-// 	"errors"
-// 	"net/http"
-//
-// 	"github.com/nextlag/gomart/internal/mw/auth"
-// 	"github.com/nextlag/gomart/internal/mw/logger"
-// )
-//
-// type Users struct {
-// }
-//
-// func (c Controller) Withdrawals(w http.ResponseWriter, r *http.Request) {
-// 	user := r.Context().Value(auth.LoginKey).(string)
-//
-// 	var spendRequest getSpendBonusRequest
-//
-// 	if err := ctx.ShouldBindJSON(&spendRequest); err != nil {
-// 		logger.ErrorLogger("Wrong request: ", err)
-// 		ctx.JSON(http.StatusBadRequest, newErrorMessage("Wrong request"))
-// 		return
-// 	}
-//
-// 	err := h.s.SpendBonuses(ctx, login, spendRequest.Order, spendRequest.Sum)
-// 	switch {
-// 	case errors.Is(err, psql.ErrNotEnoughBalance):
-// 		ctx.AbortWithStatusJSON(http.StatusPaymentRequired, newErrorMessage("Not enough balance"))
-// 		return
-// 	case errors.Is(err, validitycheck.ErrWrongOrderNum):
-// 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, newErrorMessage("Wrong order number"))
-// 		return
-// 	case errors.Is(err, psql.ErrAlreadyLoadedOrder) || errors.Is(err, psql.ErrYouAlreadyLoadedOrder):
-// 		ctx.AbortWithStatusJSON(http.StatusConflict, newErrorMessage("Order is already loaded"))
-// 		return
-// 	case err != nil:
-// 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, newErrorMessage("Internal Server Error"))
-// 		return
-// 	}
-// 	ctx.JSON(http.StatusOK, newMessage("Bonuses successfully spent"))
-//
-// 	w.Write([]byte(user))
-// }
+import (
+	"errors"
+	"net/http"
+
+	"github.com/nextlag/gomart/internal/mw/auth"
+)
+
+func (c Controller) Withdrawals(w http.ResponseWriter, r *http.Request) {
+	er := c.uc.Do().Err()
+	// Получаем логин из контекста
+	user, _ := r.Context().Value(auth.LoginKey).(string)
+
+	result, err := c.uc.DoGetWithdrawals(r.Context(), user)
+	switch {
+	case errors.Is(err, er.ErrNoRows):
+		c.log.Error("withdrawals handler", "error no rows", err.Error())
+		http.Error(w, "there is no write off", http.StatusNoContent)
+		return
+	case err != nil:
+		c.log.Error("withdrawals handler", "error", err.Error())
+		http.Error(w, er.ErrInternalServer.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(result)
+}

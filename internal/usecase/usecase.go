@@ -18,16 +18,18 @@ type Logger interface {
 type Repository interface {
 	// Register - регистрация пользователя
 	Register(ctx context.Context, login, password string) error
-	// ErrAuth — аутентификация пользователя.
+	// Auth ErrAuth — аутентификация пользователя.
 	Auth(ctx context.Context, login, password string) error
 	// InsertOrder - загрузка номера заказа.
 	InsertOrder(ctx context.Context, user string, order string) error
-	// ErrGetOrders - получение списка загруженных номеров заказов
+	// GetOrders ErrGetOrders - получение списка загруженных номеров заказов
 	GetOrders(ctx context.Context, user string) ([]byte, error)
 	// GetBalance - получение текущего баланса пользователя
 	GetBalance(ctx context.Context, login string) (float32, float32, error)
 	// Debit - запрос на списание средств
 	Debit(ctx context.Context, user, order string, sum float32) error
+	// GetWithdrawals - получение информации о выводе средств
+	GetWithdrawals(ctx context.Context, user string) ([]byte, error)
 }
 
 type UseCase struct {
@@ -74,4 +76,9 @@ func (uc *UseCase) DoGetBalance(ctx context.Context, login string) (float32, flo
 func (uc *UseCase) DoDebit(ctx context.Context, user, order string, sum float32) error {
 	err := uc.repo.Debit(ctx, user, order, sum)
 	return err
+}
+
+func (uc *UseCase) DoGetWithdrawals(ctx context.Context, user string) ([]byte, error) {
+	orders, err := uc.repo.GetWithdrawals(ctx, user)
+	return orders, err
 }
