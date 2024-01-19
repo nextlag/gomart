@@ -11,7 +11,7 @@ import (
 // A struct used to parse a json request to withdraw bonuses making an order.
 type debit struct {
 	Order string  `json:"order"`
-	Sum   float32 `json:"sum"`
+	Sum   float64 `json:"sum"`
 }
 
 func (c Controller) Withdraw(w http.ResponseWriter, r *http.Request) {

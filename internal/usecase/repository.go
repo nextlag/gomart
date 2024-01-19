@@ -56,13 +56,13 @@ func (uc *UseCase) Auth(ctx context.Context, login, password string) error {
 func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) error {
 	now := time.Now()
 
-	bonusesWithdrawn := float32(0)
+	bonusesWithdrawn := float64(0)
 
 	userOrder := &entity.Orders{
 		Users:            user,
 		Number:           order,
-		UploadedAt:       now.Format(time.RFC3339),
 		Status:           "NEW",
+		UploadedAt:       now,
 		BonusesWithdrawn: bonusesWithdrawn,
 	}
 	validOrder := luna.CheckValidOrder(order)
@@ -91,6 +91,7 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 	// Заказ не существует, вставьте его
 	_, err = db.NewInsert().
 		Model(userOrder).
+		Set("uploaded_at = ?", now.Format(time.RFC3339)).
 		Exec(ctx)
 	if err != nil {
 		return err
@@ -145,9 +146,9 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 }
 
 // GetBalance retrieves the balance and withdrawn amounts for a user.
-func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float32, error) {
+func (uc *UseCase) GetBalance(ctx context.Context, login string) (float64, float64, error) {
 	// Инициализация переменной для хранения баланса
-	var balance, withdrawn float32
+	var balance, withdrawn float64
 	// Создание экземпляра объекта для взаимодействия с базой данных
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
@@ -165,7 +166,7 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 }
 
 // Debit processes the debit operation for a user, updating the balance and withdrawn amounts.
-func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) error {
+func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float64) error {
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
 		return uc.Err().ErrOrderFormat
@@ -182,7 +183,7 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 		Users:            user,
 		Number:           order,
 		Status:           "NEW",
-		UploadedAt:       now.Format(time.RFC3339),
+		UploadedAt:       now,
 		BonusesWithdrawn: sum,
 	}
 
@@ -195,6 +196,7 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 		// Заказ не существует, добавляем новый заказ в базу данных
 		_, err = db.NewInsert().
 			Model(userOrder).
+			Set("uploaded_at = ?", now.Format(time.RFC3339)).
 			Exec(ctx)
 		if err != nil {
 			// Заказ существует
@@ -234,7 +236,6 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 }
 
 func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, error) {
-
 	var (
 		allOrders []entity.Withdrawals
 		userOrder entity.Orders
@@ -243,32 +244,34 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 	// Инициализация подключения к базе данных
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
+	// Выборка всех заказов пользователя, где bonuses_withdrawn != 0
 	rows, err := db.NewSelect().
 		Model(&userOrder).
 		Where("users = ? and bonuses_withdrawn != 0", user).
 		Order("uploaded_at ASC").
 		Rows(ctx)
-	if err != nil {
-		return nil, err
-	}
 
-	err = rows.Err()
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	noRows := true
 	for rows.Next() {
 		noRows = false
 		var orderRow entity.Orders
-		err = rows.Scan(&orderRow.Users, &orderRow.Number, &orderRow.Status, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn, &orderRow.Accrual)
-		if err != nil {
+		if err = rows.Scan(
+			&orderRow.Users,
+			&orderRow.Number,
+			&orderRow.Status,
+			&orderRow.Accrual,
+			&orderRow.UploadedAt,
+			&orderRow.BonusesWithdrawn,
+		); err != nil {
 			return nil, err
 		}
 
 		allOrders = append(allOrders, entity.Withdrawals{
-			Order:            orderRow.Number,
+			Number:           orderRow.Number,
 			Time:             orderRow.UploadedAt,
 			BonusesWithdrawn: orderRow.BonusesWithdrawn,
 		})
@@ -277,6 +280,7 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 	if noRows {
 		return nil, ErrNoRows
 	}
+
 	result, err := json.Marshal(allOrders)
 	if err != nil {
 		return nil, err

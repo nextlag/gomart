@@ -19,8 +19,8 @@ type UseCase interface {
 	DoAuth(ctx context.Context, login, password string, r *http.Request) error
 	DoInsertOrder(ctx context.Context, user, order string) error
 	DoGetOrders(ctx context.Context, user string) ([]byte, error)
-	DoGetBalance(ctx context.Context, login string) (float32, float32, error)
-	DoDebit(ctx context.Context, user, numOrder string, sum float32) error
+	DoGetBalance(ctx context.Context, login string) (float64, float64, error)
+	DoDebit(ctx context.Context, user, numOrder string, sum float64) error
 	DoGetWithdrawals(ctx context.Context, user string) ([]byte, error)
 }
 
