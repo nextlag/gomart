@@ -250,6 +250,7 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 		Where("users = ? and bonuses_withdrawn != 0", user).
 		Order("uploaded_at ASC").
 		Rows(ctx)
+	rows.Err()
 
 	if err != nil {
 		return nil, err
