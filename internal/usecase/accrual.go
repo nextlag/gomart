@@ -15,9 +15,9 @@ import (
 
 // OrderResponse структура для разбора JSON-ответа
 type OrderResponse struct {
-	Order   string `json:"order"`
-	Status  string `json:"status"`
-	Accrual int    `json:"accrual"`
+	Order   string  `json:"order"`
+	Status  string  `json:"status"`
+	Accrual float32 `json:"accrual"`
 }
 
 // GetAccrual функция, выполняющая HTTP-запрос и возвращающая структуру OrderResponse

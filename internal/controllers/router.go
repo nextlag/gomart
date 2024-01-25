@@ -21,7 +21,7 @@ type UseCase interface {
 	DoGetOrders(ctx context.Context, user string) ([]byte, error)
 	DoGetBalance(ctx context.Context, login string) (float32, float32, error)
 	DoDebit(ctx context.Context, user, numOrder string, sum float32) error
-	DoGetWithdrawals(ctx context.Context, user string) ([]byte, error)
+	DoGetWithdrawals(ctx context.Context, user string) ([]usecase.Withdrawals, error)
 }
 
 type Controller struct {

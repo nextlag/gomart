@@ -235,9 +235,9 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 	return nil
 }
 
-func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, error) {
+func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]Withdrawals, error) {
 	var (
-		allOrders []entity.Withdrawals
+		allOrders []Withdrawals
 		userOrder entity.Orders
 	)
 
@@ -271,7 +271,7 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 			return nil, err
 		}
 
-		allOrders = append(allOrders, entity.Withdrawals{
+		allOrders = append(allOrders, Withdrawals{
 			Order:            orderRow.Order,
 			BonusesWithdrawn: orderRow.BonusesWithdrawn,
 			Time:             orderRow.UploadedAt,
@@ -281,10 +281,5 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 	if noRows {
 		return nil, ErrNoRows
 	}
-
-	result, err := json.Marshal(allOrders)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+	return allOrders, nil
 }

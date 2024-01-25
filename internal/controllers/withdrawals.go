@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -12,7 +13,7 @@ func (c Controller) Withdrawals(w http.ResponseWriter, r *http.Request) {
 	// Получаем логин из контекста
 	user, _ := r.Context().Value(auth.LoginKey).(string)
 
-	result, err := c.uc.DoGetWithdrawals(r.Context(), user)
+	withdrawals, err := c.uc.DoGetWithdrawals(r.Context(), user)
 	switch {
 	case errors.Is(err, er.ErrNoRows):
 		c.log.Error("withdrawals handler", "error no rows", err.Error())
@@ -21,6 +22,11 @@ func (c Controller) Withdrawals(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		c.log.Error("withdrawals handler", "error", err.Error())
 		http.Error(w, er.ErrInternalServer.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	result, err := json.Marshal(withdrawals)
+	if err != nil {
 		return
 	}
 

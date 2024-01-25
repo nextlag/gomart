@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"time"
 
 	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/entity"
@@ -30,7 +31,14 @@ type Repository interface {
 	// Debit - запрос на списание средств
 	Debit(ctx context.Context, user, order string, sum float32) error
 	// GetWithdrawals - получение информации о выводе средств
-	GetWithdrawals(ctx context.Context, user string) ([]byte, error)
+	GetWithdrawals(ctx context.Context, user string) ([]Withdrawals, error)
+}
+
+// Withdrawals - cтруктура, предназначенная для возврата клиенту данных о заказах со снятыми бонусами.
+type Withdrawals struct {
+	Order            string    `json:"order"`
+	BonusesWithdrawn float32   `json:"sum"`
+	Time             time.Time `json:"processed_at"`
 }
 
 type UseCase struct {
@@ -80,7 +88,7 @@ func (uc *UseCase) DoDebit(ctx context.Context, user, order string, sum float32)
 	return err
 }
 
-func (uc *UseCase) DoGetWithdrawals(ctx context.Context, user string) ([]byte, error) {
+func (uc *UseCase) DoGetWithdrawals(ctx context.Context, user string) ([]Withdrawals, error) {
 	orders, err := uc.repo.GetWithdrawals(ctx, user)
 	return orders, err
 }
