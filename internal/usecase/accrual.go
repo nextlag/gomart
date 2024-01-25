@@ -136,5 +136,7 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 		uc.log.Error("error making an update request in user table", err)
 		return err
 	}
+	balance, withdrawn, _ := uc.GetBalance(ctx, userModel.Login)
+	log.Print("GetBalance to UpdateStatus: ", balance, " ", withdrawn)
 	return nil
 }

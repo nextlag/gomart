@@ -62,7 +62,6 @@ func main() {
 
 	go func() {
 		if err = db.Sync(); err != nil {
-			// Обработка ошибок, например, логирование
 			log.Error("error in uc.Sync()", "error", err.Error())
 		}
 	}()
