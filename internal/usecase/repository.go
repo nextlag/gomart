@@ -259,20 +259,28 @@ func (uc *UseCase) Debit(ctx context.Context, login string, orderNum string, sum
 		Where(`"order" = ?`, orderNum).
 		Scan(ctx)
 	if err != nil {
+		// Заказ не существует, добавляем новый заказ в базу данных
 		_, err := db.NewInsert().
 			Model(userOrder).
 			Set("uploaded_at = ?", now.Format(time.RFC3339)).
 			Exec(ctx)
-
 		if err != nil {
-			return err
+			// Заказ существует
+			if userOrder.Users == login {
+				// Заказ принадлежит текущему пользователю
+				return uc.Err().ErrThisUser
+			}
+			// Заказ принадлежит другому пользователю
+			return uc.Err().ErrAnotherUser
 		}
+		return err
 	}
-	if checkOrder.Users != login && checkOrder.Order == orderNum {
-		return uc.Err().ErrAnotherUser
-	} else if checkOrder.Users == login && checkOrder.Order == orderNum {
-		return uc.Err().ErrThisUser
-	}
+
+	// if checkOrder.Users != login && checkOrder.Order == orderNum {
+	// 	return uc.Err().ErrAnotherUser
+	// } else if checkOrder.Users == login && checkOrder.Order == orderNum {
+	// 	return uc.Err().ErrThisUser
+	// }
 
 	_, err = db.NewUpdate().
 		TableExpr("users").
