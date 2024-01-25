@@ -28,7 +28,7 @@ func (c Controller) Balance(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	c.log.Info("GetBalance handler", result)
+	c.log.Info("GetBalance handler", "balance", balance, "withdrawn", withdrawn)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(result)
