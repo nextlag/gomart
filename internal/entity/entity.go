@@ -15,9 +15,9 @@ type Orders struct {
 	Users            string    `bun:"users" json:"users,omitempty"`
 	Order            string    `bun:"order" json:"number"`
 	Status           string    `bun:"status" json:"status"`
-	Accrual          *float32  `json:"accrual,omitempty"`
+	Accrual          float32   `json:"accrual,omitempty"`
 	UploadedAt       time.Time `bun:"uploaded_at" json:"uploaded_at"`
-	BonusesWithdrawn *float32  `bun:"bonuses_withdrawn" json:"bonuses_withdrawn,omitempty"`
+	BonusesWithdrawn float32   `bun:"bonuses_withdrawn" json:"bonuses_withdrawn,omitempty"`
 }
 
 type AllEntity struct {

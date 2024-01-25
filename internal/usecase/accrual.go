@@ -98,9 +98,9 @@ func (uc *UseCase) Sync() error {
 		}
 
 		for _, unfinishedOrder := range allOrders {
-			log.Print(unfinishedOrder)
+			log.Print("unfinished", unfinishedOrder)
 			finishedOrder := GetAccrual(unfinishedOrder)
-			log.Print(finishedOrder)
+			log.Print("finished", finishedOrder)
 			err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.Users)
 			if err != nil {
 				return err
@@ -126,9 +126,10 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 		return err
 	}
 
+	log.Print("\n\nbalance", userModel.Balance+orderAccrual.Accrual)
 	_, err = db.NewUpdate().
 		Model(userModel).
-		Set("balance = balance + ?", orderAccrual.Accrual).
+		Set("balance = ?", userModel.Balance+orderAccrual.Accrual).
 		Where(`login = ?`, login).
 		Exec(ctx)
 	if err != nil {
