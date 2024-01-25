@@ -120,7 +120,7 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 	_, err := db.NewUpdate().
 		Model(orderModel).
 		Set("status = ?, accrual = ?", orderAccrual.Status, orderAccrual.Accrual).
-		Where(`"number" = ?`, orderAccrual.Order).
+		Where(`"order" = ?`, orderAccrual.Order).
 		Exec(ctx)
 	if err != nil {
 		return err
