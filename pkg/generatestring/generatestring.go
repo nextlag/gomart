@@ -13,3 +13,24 @@ func NewRandomString(length int) string {
 	}
 	return string(result)
 }
+
+func DigitString(minLen, maxLen int) string {
+	var rnd *rand.Rand
+	var letters = "0123456789"
+
+	slen := rnd.Intn(maxLen-minLen) + minLen
+
+	s := make([]byte, 0, slen)
+	i := 0
+	for len(s) < slen {
+		idx := rnd.Intn(len(letters) - 1)
+		char := letters[idx]
+		if i == 0 && '0' == char {
+			continue
+		}
+		s = append(s, char)
+		i++
+	}
+
+	return string(s)
+}
