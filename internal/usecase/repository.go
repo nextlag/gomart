@@ -176,6 +176,9 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 
 	// Получение текущего баланса пользователя
 	balance, _, err := uc.GetBalance(ctx, user)
+	if err != nil {
+		return err
+	}
 	if balance < sum {
 		// Если на счету пользователя недостаточно средств, возвращает ошибку
 		return uc.Err().ErrNoBalance
