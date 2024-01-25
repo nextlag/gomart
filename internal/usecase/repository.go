@@ -234,8 +234,12 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 // 	return nil
 // }
 
-func (uc *UseCase) Debit(ctx context.Context, login string, orderNum string, sum float32) error {
-	balance, _, nil := uc.GetBalance(ctx, login)
+func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum float32) error {
+	validOrder := luna.CheckValidOrder(order)
+	if !validOrder {
+		return uc.Err().ErrOrderFormat
+	}
+	balance, _, nil := uc.GetBalance(ctx, user)
 	if balance < sum {
 		return uc.Err().ErrNoBalance
 	}
@@ -247,8 +251,8 @@ func (uc *UseCase) Debit(ctx context.Context, login string, orderNum string, sum
 	now := time.Now()
 
 	userOrder := &entity.Orders{
-		Users:            login,
-		Order:            orderNum,
+		Users:            user,
+		Order:            order,
 		UploadedAt:       now,
 		Status:           "NEW",
 		BonusesWithdrawn: sum,
@@ -256,39 +260,31 @@ func (uc *UseCase) Debit(ctx context.Context, login string, orderNum string, sum
 
 	err := db.NewSelect().
 		Model(checkOrder).
-		Where(`"order" = ?`, orderNum).
+		Where(`"order" = ?`, order).
 		Scan(ctx)
-	if err != nil {
+	if !errors.Is(err, nil) {
 		// Заказ не существует, добавляем новый заказ в базу данных
 		_, err := db.NewInsert().
 			Model(userOrder).
 			Set("uploaded_at = ?", now.Format(time.RFC3339)).
 			Exec(ctx)
-		if err != nil {
-			// Заказ существует
-			if userOrder.Users == login {
-				// Заказ принадлежит текущему пользователю
-				return uc.Err().ErrThisUser
-			}
-			// Заказ принадлежит другому пользователю
-			return uc.Err().ErrAnotherUser
+		if !errors.Is(err, nil) {
+			return err
 		}
-		return err
 	}
-
-	// if checkOrder.Users != login && checkOrder.Order == orderNum {
-	// 	return uc.Err().ErrAnotherUser
-	// } else if checkOrder.Users == login && checkOrder.Order == orderNum {
-	// 	return uc.Err().ErrThisUser
-	// }
+	if checkOrder.Users != user && checkOrder.Order == order {
+		return uc.Err().ErrAnotherUser
+	} else if checkOrder.Users == user && checkOrder.Order == order {
+		return uc.Err().ErrThisUser
+	}
 
 	_, err = db.NewUpdate().
 		TableExpr("users").
 		Set("balance = ?", balance-sum).
 		Set("withdrawn = withdrawn + ?", sum).
-		Where("login = ?", login).
+		Where("login = ?", user).
 		Exec(ctx)
-	if err != nil {
+	if !errors.Is(err, nil) {
 		return err
 	}
 
