@@ -57,9 +57,10 @@ func GetAccrual(order entity.Orders) OrderResponse {
 	return orderUpdate
 }
 
-func (uc *UseCase) Sync() error {
+func (uc *UseCase) Sync() (float32, float32, error) {
 	ticker := time.NewTicker(tick)
 	ctx := context.Background()
+	var balance, withdrawn float32
 
 	for range ticker.C {
 
@@ -75,14 +76,14 @@ func (uc *UseCase) Sync() error {
 			Rows(ctx)
 		rows.Err()
 		if err != nil {
-			return err
+			return 0, 0, err
 		}
 
 		for rows.Next() {
 			var orderRow entity.Orders
 			err = rows.Scan(&orderRow.Users, &orderRow.Order, &orderRow.Status, &orderRow.Accrual, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn)
 			if err != nil {
-				return err
+				return 0, 0, err
 			}
 			allOrders = append(allOrders, entity.Orders{
 				Users:      orderRow.Users,
@@ -94,23 +95,23 @@ func (uc *UseCase) Sync() error {
 		}
 		err = rows.Close()
 		if err != nil {
-			return err
+			return 0, 0, err
 		}
 
 		for _, unfinishedOrder := range allOrders {
 			log.Print("unfinished", unfinishedOrder)
 			finishedOrder := GetAccrual(unfinishedOrder)
 			log.Print("finished", finishedOrder)
-			err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.Users)
+			balance, withdrawn, err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.Users)
 			if err != nil {
-				return err
+				return 0, 0, err
 			}
 		}
 	}
-	return nil
+	return balance, withdrawn, nil
 }
 
-func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string) error {
+func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string) (float32, float32, error) {
 
 	orderModel := &entity.Orders{}
 	userModel := &entity.User{}
@@ -123,7 +124,7 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 		Where(`"order" = ?`, orderAccrual.Order).
 		Exec(ctx)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 	// Получение данных пользователя перед обновлением баланса
 	err = db.NewSelect().
@@ -131,10 +132,9 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 		Where("login = ?", login).
 		Scan(ctx)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 
-	log.Print("\n\nbalance", userModel.Balance+orderAccrual.Accrual)
 	_, err = db.NewUpdate().
 		Model(userModel).
 		Set("balance = balance + ?", orderAccrual.Accrual).
@@ -142,10 +142,9 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 		Exec(ctx)
 	if err != nil {
 		uc.log.Error("error making an update request in user table", err)
-		return err
+		return 0, 0, err
 	}
-	log.Print("\n\nbalance: ", userModel.Balance+orderAccrual.Accrual)
 	balance, withdrawn, _ := uc.GetBalance(ctx, userModel.Login)
 	log.Print("GetBalance to UpdateStatus: ", balance, " ", withdrawn)
-	return nil
+	return balance, withdrawn, nil
 }
