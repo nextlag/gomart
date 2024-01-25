@@ -167,10 +167,10 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 
 // Debit - обновляя баланс и снимаемые суммы.
 func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) error {
-	validOrder := luna.CheckValidOrder(order)
-	if !validOrder {
-		return uc.Err().ErrOrderFormat
-	}
+	// validOrder := luna.CheckValidOrder(order)
+	// if !validOrder {
+	// 	return uc.Err().ErrOrderFormat
+	// }
 
 	// Получение текущего баланса пользователя
 	balance, _, err := uc.GetBalance(ctx, user)
