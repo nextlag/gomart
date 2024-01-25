@@ -178,11 +178,6 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 		return err
 	}
 
-	// Проверка наличия достаточного баланса для списания бонусов
-	// if balance < sum {
-	// 	return uc.Err().ErrNoBalance
-	// }
-
 	// Инициализация подключения к базе данных
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
@@ -220,6 +215,12 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 		}
 		return err
 	}
+
+	// Проверка наличия достаточного баланса для списания бонусов
+	if balance < sum {
+		return uc.Err().ErrNoBalance
+	}
+
 	// Обновление баланса пользователя после списания бонусов
 	_, err = db.NewUpdate().
 		TableExpr("users").
