@@ -165,10 +165,12 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 	return user.Balance, user.Withdrawn, nil
 }
 
-// Debit - обновляя баланс и снимаемые суммы.
-func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) error {
+// Debit выполняет списание бонусов со счета пользователя за определенный заказ.
+func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum float32) error {
+	// Проверка корректности номера заказа
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
+		// Если заказ некорректен, возвращает ErrOrderFormat.
 		return uc.Err().ErrOrderFormat
 	}
 
@@ -177,60 +179,59 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 	if err != nil {
 		return err
 	}
-
-	// Проверка наличия достаточного баланса для списания бонусов
 	if balance < sum {
+		// Если на счету пользователя недостаточно средств, возвращает ошибку
 		return uc.Err().ErrNoBalance
 	}
 
 	// Инициализация подключения к базе данных
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
-	// Получение текущей даты и времени
+	// Проверка существования заказа в базе данных
+	checkOrder := entity.Orders{}
 	now := time.Now()
 
-	// Создание объекта заказа пользователя
-	userOrder := &entity.Orders{
-		Users:            user,
-		Order:            order,
-		Status:           "NEW",
-		UploadedAt:       now,
-		BonusesWithdrawn: sum,
-	}
-
-	// Проверка существования заказа в базе данных
 	err = db.NewSelect().
-		Model(&userOrder).
+		Model(checkOrder).
 		Where(`"order" = ?`, order).
 		Scan(ctx)
-	if err != nil {
+	if !errors.Is(err, nil) {
 		// Заказ не существует, добавляем новый заказ в базу данных
-		_, err = db.NewInsert().
-			Model(userOrder).
+		_, err := db.NewInsert().
+			Model(&entity.Orders{
+				Users:            user,
+				Order:            order,
+				UploadedAt:       now,
+				Status:           "NEW",
+				BonusesWithdrawn: sum,
+			}).
 			Set("uploaded_at = ?", now.Format(time.RFC3339)).
 			Exec(ctx)
-		if err != nil {
-			// Заказ существует
-			if userOrder.Users == user {
-				// Заказ принадлежит текущему пользователю
-				return uc.Err().ErrThisUser
-			}
-			// Заказ принадлежит другому пользователю
-			return uc.Err().ErrAnotherUser
+		if !errors.Is(err, nil) {
+			return err
 		}
-		return err
 	}
-	// Обновление баланса пользователя после списания бонусов
+
+	// Проверка принадлежности заказа текущему пользователю или другому
+	if checkOrder.Users != user && checkOrder.Order == order {
+		// Если заказ существует и принадлежит другому пользователю, возвращает ErrAnotherUser.
+		return uc.Err().ErrAnotherUser
+	} else if checkOrder.Users == user && checkOrder.Order == order {
+		// Если заказ существует и принадлежит текущему пользователю, возвращает ErrThisUser.
+		return uc.Err().ErrThisUser
+	}
+
+	// Если заказ существует, обновляет баланс пользователя и добавляет запись о списании в базу данных.
 	_, err = db.NewUpdate().
 		TableExpr("users").
 		Set("balance = ?", balance-sum).
 		Set("withdrawn = withdrawn + ?", sum).
 		Where("login = ?", user).
 		Exec(ctx)
-
 	if !errors.Is(err, nil) {
 		return err
 	}
+
 	return nil
 }
 

@@ -46,8 +46,8 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
-  "order": "88070083642064",
-  "sum": 203
+  "order": "12345678903",
+  "sum": -10000
 }
 
 
