@@ -31,15 +31,15 @@ func (c Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
 	err = c.uc.DoInsertOrder(r.Context(), user, order)
 	switch {
 	case errors.Is(err, er.ErrOrderFormat):
-		c.log.Debug("insert Order 422", "error", err.Error())
+		c.log.Error("insert Order 422", "error", err.Error())
 		http.Error(w, er.ErrOrderFormat.Error(), http.StatusUnprocessableEntity)
 		return
 	case errors.Is(err, er.ErrAnotherUser):
-		c.log.Debug("insert Order 409", "error", err.Error())
+		c.log.Error("insert Order 409", "error", err.Error())
 		http.Error(w, er.ErrAnotherUser.Error(), http.StatusConflict)
 		return
 	case errors.Is(err, er.ErrThisUser):
-		c.log.Debug("insert Order 200", "error", err.Error())
+		c.log.Error("insert Order 200", "error", err.Error())
 		http.Error(w, er.ErrThisUser.Error(), http.StatusOK)
 		return
 	default:
