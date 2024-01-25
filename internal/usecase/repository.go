@@ -165,72 +165,125 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 	return user.Balance, user.Withdrawn, nil
 }
 
-// Debit - обновляя баланс и снимаемые суммы.
-func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) error {
-	validOrder := luna.CheckValidOrder(order)
-	if !validOrder {
-		return uc.Err().ErrOrderFormat
-	}
+// // Debit - обновляя баланс и снимаемые суммы.
+// func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) error {
+// 	validOrder := luna.CheckValidOrder(order)
+// 	if !validOrder {
+// 		return uc.Err().ErrOrderFormat
+// 	}
+//
+// 	// Получение текущего баланса пользователя
+// 	balance, _, err := uc.GetBalance(ctx, user)
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	// Проверка наличия достаточного баланса для списания бонусов
+// 	if balance < sum {
+// 		return uc.Err().ErrNoBalance
+// 	}
+//
+// 	// Инициализация подключения к базе данных
+// 	db := bun.NewDB(uc.DB, pgdialect.New())
+//
+// 	// Получение текущей даты и времени
+// 	now := time.Now()
+//
+// 	// Создание объекта заказа пользователя
+// 	userOrder := &entity.Orders{
+// 		Users:            user,
+// 		Order:            order,
+// 		Status:           "NEW",
+// 		UploadedAt:       now,
+// 		BonusesWithdrawn: sum,
+// 	}
+//
+// 	// Проверка существования заказа в базе данных
+// 	err = db.NewSelect().
+// 		Model(&userOrder).
+// 		Where(`"order" = ?`, order).
+// 		Scan(ctx)
+// 	if err != nil {
+// 		// Заказ не существует, добавляем новый заказ в базу данных
+// 		_, err = db.NewInsert().
+// 			Model(userOrder).
+// 			Set("uploaded_at = ?", now.Format(time.RFC3339)).
+// 			Exec(ctx)
+// 		if err != nil {
+// 			// Заказ существует
+// 			if userOrder.Users == user {
+// 				// Заказ принадлежит текущему пользователю
+// 				return uc.Err().ErrThisUser
+// 			}
+// 			// Заказ принадлежит другому пользователю
+// 			return uc.Err().ErrAnotherUser
+// 		}
+// 		return err
+// 	}
+// 	// Обновление баланса пользователя после списания бонусов
+// 	_, err = db.NewUpdate().
+// 		TableExpr("users").
+// 		Set("balance = ?", balance-sum).
+// 		Set("withdrawn = withdrawn + ?", sum).
+// 		Where("login = ?", user).
+// 		Exec(ctx)
+//
+// 	if !errors.Is(err, nil) {
+// 		return err
+// 	}
+// 	return nil
+// }
 
-	// Получение текущего баланса пользователя
-	balance, _, err := uc.GetBalance(ctx, user)
-	if err != nil {
-		return err
-	}
-
-	// Проверка наличия достаточного баланса для списания бонусов
+func (uc *UseCase) Debit(ctx context.Context, login string, orderNum string, sum float32) error {
+	balance, _, nil := uc.GetBalance(ctx, login)
 	if balance < sum {
 		return uc.Err().ErrNoBalance
 	}
 
-	// Инициализация подключения к базе данных
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
-	// Получение текущей даты и времени
+	checkOrder := new(entity.Orders)
+
 	now := time.Now()
 
-	// Создание объекта заказа пользователя
 	userOrder := &entity.Orders{
-		Users:            user,
-		Order:            order,
-		Status:           "NEW",
+		Users:            login,
+		Order:            orderNum,
 		UploadedAt:       now,
+		Status:           "NEW",
 		BonusesWithdrawn: sum,
 	}
 
-	// Проверка существования заказа в базе данных
-	err = db.NewSelect().
-		Model(&userOrder).
-		Where(`"order" = ?`, order).
+	err := db.NewSelect().
+		Model(checkOrder).
+		Where(`"order" = ?`, orderNum).
 		Scan(ctx)
 	if err != nil {
-		// Заказ не существует, добавляем новый заказ в базу данных
-		_, err = db.NewInsert().
+		_, err := db.NewInsert().
 			Model(userOrder).
 			Set("uploaded_at = ?", now.Format(time.RFC3339)).
 			Exec(ctx)
+
 		if err != nil {
-			// Заказ существует
-			if userOrder.Users == user {
-				// Заказ принадлежит текущему пользователю
-				return uc.Err().ErrThisUser
-			}
-			// Заказ принадлежит другому пользователю
-			return uc.Err().ErrAnotherUser
+			return err
 		}
-		return err
 	}
-	// Обновление баланса пользователя после списания бонусов
+	if checkOrder.Users != login && checkOrder.Order == orderNum {
+		return uc.Err().ErrAnotherUser
+	} else if checkOrder.Users == login && checkOrder.Order == orderNum {
+		return uc.Err().ErrThisUser
+	}
+
 	_, err = db.NewUpdate().
 		TableExpr("users").
 		Set("balance = ?", balance-sum).
 		Set("withdrawn = withdrawn + ?", sum).
-		Where("login = ?", user).
+		Where("login = ?", login).
 		Exec(ctx)
-
-	if !errors.Is(err, nil) {
+	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
