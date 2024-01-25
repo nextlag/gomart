@@ -56,11 +56,11 @@ func (uc *UseCase) Auth(ctx context.Context, login, password string) error {
 func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) error {
 	now := time.Now()
 
-	bonusesWithdrawn := float64(0)
+	bonusesWithdrawn := float32(0)
 
 	userOrder := &entity.Orders{
 		Users:            user,
-		Number:           order,
+		Order:            order,
 		Status:           "NEW",
 		UploadedAt:       now,
 		BonusesWithdrawn: bonusesWithdrawn,
@@ -76,7 +76,7 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 
 	err := db.NewSelect().
 		Model(&checkOrder).
-		Where(`"number" = ?`, order).
+		Where(`"order" = ?`, order).
 		Scan(ctx)
 	if errors.Is(err, nil) {
 		// Заказ существует
@@ -125,13 +125,13 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 
 	for rows.Next() {
 		var en entity.Orders
-		err = rows.Scan(&en.Users, &en.Number, &en.Status, &en.Accrual, &en.UploadedAt, &en.BonusesWithdrawn)
+		err = rows.Scan(&en.Users, &en.Order, &en.Status, &en.Accrual, &en.UploadedAt, &en.BonusesWithdrawn)
 		if err != nil {
 			return nil, err
 		}
 
 		allOrders = append(allOrders, entity.Orders{
-			Number:     en.Number,
+			Order:      en.Order,
 			Status:     en.Status,
 			Accrual:    en.Accrual,
 			UploadedAt: en.UploadedAt,
@@ -146,9 +146,9 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 }
 
 // GetBalance retrieves the balance and withdrawn amounts for a user.
-func (uc *UseCase) GetBalance(ctx context.Context, login string) (float64, float64, error) {
+func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float32, error) {
 	// Инициализация переменной для хранения баланса
-	var balance, withdrawn float64
+	var balance, withdrawn float32
 	// Создание экземпляра объекта для взаимодействия с базой данных
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
@@ -165,11 +165,22 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float64, float
 	return balance, withdrawn, nil
 }
 
-// Debit processes the debit operation for a user, updating the balance and withdrawn amounts.
-func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float64) error {
+// Debit - обновляя баланс и снимаемые суммы.
+func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) error {
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
 		return uc.Err().ErrOrderFormat
+	}
+
+	// Получение текущего баланса пользователя
+	balance, _, err := uc.GetBalance(ctx, user)
+	if err != nil {
+		return err
+	}
+
+	// Проверка наличия достаточного баланса для списания бонусов
+	if balance < sum {
+		return uc.Err().ErrNoBalance
 	}
 
 	// Инициализация подключения к базе данных
@@ -181,16 +192,16 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float64) e
 	// Создание объекта заказа пользователя
 	userOrder := &entity.Orders{
 		Users:            user,
-		Number:           order,
+		Order:            order,
 		Status:           "NEW",
 		UploadedAt:       now,
 		BonusesWithdrawn: sum,
 	}
 
 	// Проверка существования заказа в базе данных
-	err := db.NewSelect().
+	err = db.NewSelect().
 		Model(&userOrder).
-		Where(`"number" = ?`, order).
+		Where(`"order" = ?`, order).
 		Scan(ctx)
 	if err != nil {
 		// Заказ не существует, добавляем новый заказ в базу данных
@@ -208,17 +219,6 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float64) e
 			return uc.Err().ErrAnotherUser
 		}
 		return err
-	}
-
-	// Получение текущего баланса пользователя
-	balance, _, err := uc.GetBalance(ctx, user)
-	if err != nil {
-		return err
-	}
-
-	// Проверка наличия достаточного баланса для списания бонусов
-	if balance < sum {
-		return uc.Err().ErrNoBalance
 	}
 
 	// Обновление баланса пользователя после списания бонусов
@@ -262,7 +262,7 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 		var orderRow entity.Orders
 		if err = rows.Scan(
 			&orderRow.Users,
-			&orderRow.Number,
+			&orderRow.Order,
 			&orderRow.Status,
 			&orderRow.Accrual,
 			&orderRow.UploadedAt,
@@ -272,9 +272,9 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 		}
 
 		allOrders = append(allOrders, entity.Withdrawals{
-			Number:           orderRow.Number,
-			Time:             orderRow.UploadedAt,
+			Order:            orderRow.Order,
 			BonusesWithdrawn: orderRow.BonusesWithdrawn,
+			Time:             orderRow.UploadedAt,
 		})
 	}
 

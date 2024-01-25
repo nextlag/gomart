@@ -6,18 +6,18 @@ import "time"
 type User struct {
 	Login     string  `json:"login"`
 	Password  string  `json:"password"`
-	Balance   float64 `json:"balance"`
-	Withdrawn float64 `json:"withdrawn"`
+	Balance   float32 `json:"balance"`
+	Withdrawn float32 `json:"withdrawn"`
 }
 
 // Orders - cтруктура, предназначенная для вставки данных в таблицу заказов.
 type Orders struct {
 	Users            string    `bun:"users" json:"users,omitempty"`
-	Number           string    `bun:"number" json:"number"`
+	Order            string    `bun:"order" json:"order"`
 	Status           string    `bun:"status" json:"status"`
-	Accrual          float64   `json:"accrual,omitempty"`
+	Accrual          float32   `json:"accrual,omitempty"`
 	UploadedAt       time.Time `bun:"uploaded_at" json:"uploaded_at"`
-	BonusesWithdrawn float64   `bun:"bonuses_withdrawn" json:"bonuses_withdrawn,omitempty"`
+	BonusesWithdrawn float32   `bun:"bonuses_withdrawn" json:"bonuses_withdrawn,omitempty"`
 }
 
 type AllEntity struct {
@@ -27,14 +27,14 @@ type AllEntity struct {
 
 // Withdrawals - cтруктура, предназначенная для возврата клиенту данных о заказах с снятыми бонусами.
 type Withdrawals struct {
-	Number           string    `json:"order"`
-	BonusesWithdrawn float64   `json:"sum"`
+	Order            string    `json:"order"`
+	BonusesWithdrawn float32   `json:"sum"`
 	Time             time.Time `json:"processed_at"`
 }
 
 // cтруктура, предназначенная для получения данных из системы начисления
-type OrderUpdateFromAccrual struct {
-	Number  string  `json:"number"`
+type UpdateAccrual struct {
+	Order   string  `json:"order"`
 	Status  string  `json:"status"`
-	Accrual float64 `json:"accrual"`
+	Accrual float32 `json:"accrual"`
 }

@@ -26,9 +26,9 @@ type Repository interface {
 	// GetOrders ErrGetOrders - получение списка загруженных номеров заказов
 	GetOrders(ctx context.Context, user string) ([]byte, error)
 	// GetBalance - получение текущего баланса пользователя
-	GetBalance(ctx context.Context, login string) (float64, float64, error)
+	GetBalance(ctx context.Context, login string) (float32, float32, error)
 	// Debit - запрос на списание средств
-	Debit(ctx context.Context, user, order string, sum float64) error
+	Debit(ctx context.Context, user, order string, sum float32) error
 	// GetWithdrawals - получение информации о выводе средств
 	GetWithdrawals(ctx context.Context, user string) ([]byte, error)
 }
@@ -70,12 +70,12 @@ func (uc *UseCase) DoGetOrders(ctx context.Context, user string) ([]byte, error)
 	return orders, err
 }
 
-func (uc *UseCase) DoGetBalance(ctx context.Context, login string) (float64, float64, error) {
+func (uc *UseCase) DoGetBalance(ctx context.Context, login string) (float32, float32, error) {
 	b, w, err := uc.repo.GetBalance(ctx, login)
 	return b, w, err
 }
 
-func (uc *UseCase) DoDebit(ctx context.Context, user, order string, sum float64) error {
+func (uc *UseCase) DoDebit(ctx context.Context, user, order string, sum float32) error {
 	err := uc.repo.Debit(ctx, user, order, sum)
 	return err
 }

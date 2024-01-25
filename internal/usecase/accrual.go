@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -12,13 +13,14 @@ import (
 	"github.com/nextlag/gomart/internal/entity"
 )
 
-func GetAccrual(order entity.Orders, cfg config.HTTPServer, log Logger) entity.OrderUpdateFromAccrual {
-	client := resty.New().SetBaseURL(cfg.Accrual)
-	var orderUpdate entity.OrderUpdateFromAccrual
+func GetAccrual(order entity.Orders) entity.UpdateAccrual {
+	client := resty.New().SetBaseURL(config.Cfg.Accrual)
+	var orderUpdate entity.UpdateAccrual
+	log.Print(entity.UpdateAccrual{})
 	for {
 		resp, err := client.R().
 			SetResult(&orderUpdate).
-			Get("/api/orders/" + order.Number)
+			Get("/api/orders/" + order.Order)
 		if err != nil {
 			break
 		}
@@ -30,13 +32,16 @@ func GetAccrual(order entity.Orders, cfg config.HTTPServer, log Logger) entity.O
 		}
 
 		if resp.StatusCode() == 500 {
+			log.Print(resp.StatusCode())
 			break
 		}
 
 		if orderUpdate.Status == "INVALID" || orderUpdate.Status == "PROCESSED" {
+			log.Print(orderUpdate.Status)
 			break
 		}
 	}
+	log.Print("orderUpdate", orderUpdate)
 	return orderUpdate
 }
 
@@ -63,16 +68,16 @@ func (uc *UseCase) Sync() error {
 
 		for rows.Next() {
 			var orderRow entity.Orders
-			err = rows.Scan(&orderRow.Users, &orderRow.Number, &orderRow.Status, &orderRow.Accrual, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn)
+			err = rows.Scan(&orderRow.Users, &orderRow.Order, &orderRow.Status, &orderRow.Accrual, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn)
 			if err != nil {
 				return err
 			}
 			allOrders = append(allOrders, entity.Orders{
-				Number:     orderRow.Number,
-				UploadedAt: orderRow.UploadedAt,
+				Users:      orderRow.Users,
+				Order:      orderRow.Order,
 				Status:     orderRow.Status,
 				Accrual:    orderRow.Accrual,
-				Users:      orderRow.Users,
+				UploadedAt: orderRow.UploadedAt,
 			})
 		}
 		err = rows.Close()
@@ -81,7 +86,9 @@ func (uc *UseCase) Sync() error {
 		}
 
 		for _, unfinishedOrder := range allOrders {
-			finishedOrder := GetAccrual(unfinishedOrder, uc.cfg, uc.log)
+			log.Print(unfinishedOrder)
+			finishedOrder := GetAccrual(unfinishedOrder)
+			log.Print(finishedOrder)
 			err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.Users)
 			if err != nil {
 				return err
@@ -91,7 +98,7 @@ func (uc *UseCase) Sync() error {
 	return nil
 }
 
-func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual entity.OrderUpdateFromAccrual, login string) error {
+func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual entity.UpdateAccrual, login string) error {
 
 	orderModel := &entity.Orders{}
 	userModel := &entity.User{}
@@ -101,10 +108,9 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual entity.OrderUp
 	_, err := db.NewUpdate().
 		Model(orderModel).
 		Set("status = ?, accrual = ?", orderAccrual.Status, orderAccrual.Accrual).
-		Where(`"number" = ?`, orderAccrual.Number).
+		Where(`"order" = ?`, orderAccrual.Order).
 		Exec(ctx)
 	if err != nil {
-		uc.log.Error("error making an update request in order table", err)
 		return err
 	}
 

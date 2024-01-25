@@ -13,7 +13,7 @@ type HTTPServer struct {
 	DSN         string     `json:"dsn,omitempty" env:"DATABASE_URI" envDefault:"postgres://postgres:Xer_0101@localhost/gophermart?sslmode=disable"`
 	SecretToken string     `json:"secret_token" env:"SECRET_TOKEN" envDefault:"sky-go-mart"`
 	LogLevel    slog.Level `json:"log_level" env:"LOG_LEVEL"`
-	Accrual     string     `json:"accrual" env:"ACCRUAL_SYSTEM_ADDRESS" envDefault:":8081"`
+	Accrual     string     `json:"accrual" env:"ACCRUAL_SYSTEM_ADDRESS" envDefault:"http://localhost:8081"`
 }
 
 var Cfg HTTPServer

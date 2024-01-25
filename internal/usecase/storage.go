@@ -14,7 +14,7 @@ const (
 	);`
 	ordersTable = `CREATE TABLE IF NOT EXISTS orders (
 		users VARCHAR(255),
-		number VARCHAR(255) PRIMARY KEY,
+		"order" VARCHAR(255) PRIMARY KEY,
 		status VARCHAR(255),
 		accrual FLOAT,
 		uploaded_at TIMESTAMP,

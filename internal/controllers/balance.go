@@ -8,8 +8,8 @@ import (
 )
 
 type userBalance struct {
-	Balance   float64 `json:"current"`
-	Withdrawn float64 `json:"withdrawn"`
+	Balance   float32 `json:"current"`
+	Withdrawn float32 `json:"withdrawn"`
 }
 
 func (c Controller) Balance(w http.ResponseWriter, r *http.Request) {
