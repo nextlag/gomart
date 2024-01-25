@@ -273,9 +273,9 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 		}
 
 		allOrders = append(allOrders, entity.Withdrawals{
-			Order:            orderRow.Order,
-			BonusesWithdrawn: orderRow.BonusesWithdrawn,
-			// Time:             orderRow.UploadedAt,
+			Order: orderRow.Order,
+			Sum:   orderRow.BonusesWithdrawn,
+			Time:  orderRow.UploadedAt,
 		})
 	}
 
