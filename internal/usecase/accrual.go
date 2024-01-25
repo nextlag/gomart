@@ -13,35 +13,53 @@ import (
 	"github.com/nextlag/gomart/internal/entity"
 )
 
-func GetAccrual(order entity.Orders) entity.UpdateAccrual {
+// OrderResponse структура для разбора JSON-ответа
+type OrderResponse struct {
+	Order   string `json:"order"`
+	Status  string `json:"status"`
+	Accrual int    `json:"accrual"`
+}
+
+// GetAccrual функция, выполняющая HTTP-запрос и возвращающая структуру OrderResponse
+func GetAccrual(order entity.Orders) OrderResponse {
 	client := resty.New().SetBaseURL(config.Cfg.Accrual)
-	var orderUpdate entity.UpdateAccrual
-	log.Print(entity.UpdateAccrual{})
+	var orderUpdate OrderResponse
 	for {
 		resp, err := client.R().
 			SetResult(&orderUpdate).
 			Get("/api/orders/" + order.Order)
+
 		if err != nil {
+			log.Printf("got error trying to send a get request to accrual: %v", err)
 			break
 		}
+
+		log.Printf("response status code: %d", resp.StatusCode())
+		log.Printf("response body: %s", resp.String())
+
 		switch resp.StatusCode() {
 		case 429:
+			log.Println("status 429: the number of requests to the service has been exceeded. Sleeping for 3 seconds.")
 			time.Sleep(3 * time.Second)
 		case 204:
+			log.Println("status 204: the order is not registered in the payment system. Sleeping for 1 second.")
 			time.Sleep(1 * time.Second)
 		}
 
 		if resp.StatusCode() == 500 {
-			log.Print(resp.StatusCode())
+			log.Printf("internal server error in accrual system: %v", err)
 			break
 		}
 
 		if orderUpdate.Status == "INVALID" || orderUpdate.Status == "PROCESSED" {
-			log.Print(orderUpdate.Status)
+			log.Printf("exiting the loop. Order status: %s", orderUpdate.Status)
 			break
 		}
+
+		log.Printf("continuing the loop. Order status: %s", orderUpdate.Status)
+
+		log.Println("continuing after sleep.")
 	}
-	log.Print("orderUpdate", orderUpdate)
 	return orderUpdate
 }
 
@@ -98,7 +116,7 @@ func (uc *UseCase) Sync() error {
 	return nil
 }
 
-func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual entity.UpdateAccrual, login string) error {
+func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string) error {
 
 	orderModel := &entity.Orders{}
 	userModel := &entity.User{}

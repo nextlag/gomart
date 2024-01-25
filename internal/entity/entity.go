@@ -25,16 +25,9 @@ type AllEntity struct {
 	*Orders
 }
 
-// Withdrawals - cтруктура, предназначенная для возврата клиенту данных о заказах с снятыми бонусами.
+// Withdrawals - cтруктура, предназначенная для возврата клиенту данных о заказах со снятыми бонусами.
 type Withdrawals struct {
 	Order            string    `json:"order"`
 	BonusesWithdrawn float32   `json:"sum"`
 	Time             time.Time `json:"processed_at"`
-}
-
-// cтруктура, предназначенная для получения данных из системы начисления
-type UpdateAccrual struct {
-	Order   string  `json:"order"`
-	Status  string  `json:"status"`
-	Accrual float32 `json:"accrual"`
 }
