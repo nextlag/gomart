@@ -168,10 +168,10 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 
 // Debit - обновляя баланс и снимаемые суммы.
 func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) error {
-	// validOrder := luna.CheckValidOrder(order)
-	// if !validOrder {
-	// 	return uc.Err().ErrOrderFormat
-	// }
+	validOrder := luna.CheckValidOrder(order)
+	if !validOrder {
+		return uc.Err().ErrOrderFormat
+	}
 
 	// Получение текущего баланса пользователя
 	balance, withdrawn, err := uc.GetBalance(ctx, user)
@@ -221,7 +221,6 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 		}
 		return err
 	}
-	log.Print("\n\n==========\n\n", "ОБНОВЛЕНИЕ БАЛАНСА")
 	// Обновление баланса пользователя после списания бонусов
 	_, err = db.NewUpdate().
 		TableExpr("users").
@@ -230,7 +229,6 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 		Where("login = ?", user).
 		Exec(ctx)
 
-	log.Print(balance - sum)
 	if !errors.Is(err, nil) {
 		return err
 	}
@@ -277,7 +275,7 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 		allOrders = append(allOrders, entity.Withdrawals{
 			Order:            orderRow.Order,
 			BonusesWithdrawn: orderRow.BonusesWithdrawn,
-			Time:             orderRow.UploadedAt,
+			// Time:             orderRow.UploadedAt,
 		})
 	}
 
