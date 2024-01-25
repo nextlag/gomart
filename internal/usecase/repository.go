@@ -64,7 +64,7 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 		Order:            order,
 		Status:           "NEW",
 		UploadedAt:       now,
-		BonusesWithdrawn: bonusesWithdrawn,
+		BonusesWithdrawn: &bonusesWithdrawn,
 	}
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
@@ -196,7 +196,7 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 		Order:            order,
 		Status:           "NEW",
 		UploadedAt:       now,
-		BonusesWithdrawn: sum,
+		BonusesWithdrawn: &sum,
 	}
 
 	// Проверка существования заказа в базе данных
@@ -274,7 +274,7 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 
 		allOrders = append(allOrders, entity.Withdrawals{
 			Order: orderRow.Order,
-			Sum:   orderRow.BonusesWithdrawn,
+			Sum:   *orderRow.BonusesWithdrawn,
 			Time:  orderRow.UploadedAt,
 		})
 	}
