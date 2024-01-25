@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -174,7 +173,7 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 	}
 
 	// Получение текущего баланса пользователя
-	balance, withdrawn, err := uc.GetBalance(ctx, user)
+	balance, _, err := uc.GetBalance(ctx, user)
 	if err != nil {
 		return err
 	}
@@ -225,14 +224,13 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 	_, err = db.NewUpdate().
 		TableExpr("users").
 		Set("balance = ?", balance-sum).
-		Set("withdrawn = ?", withdrawn+sum).
+		Set("withdrawn = withdrawn + ?", sum).
 		Where("login = ?", user).
 		Exec(ctx)
 
 	if !errors.Is(err, nil) {
 		return err
 	}
-	log.Print("balance", balance-sum, "withdrawn", withdrawn+sum, "\n\nEND BALANCE")
 	return nil
 }
 
