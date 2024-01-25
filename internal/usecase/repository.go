@@ -148,22 +148,21 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 
 // GetBalance retrieves the balance and withdrawn amounts for a user.
 func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float32, error) {
-	// Инициализация переменной для хранения баланса
-	var balance, withdrawn float32
-	// Создание экземпляра объекта для взаимодействия с базой данных
+	var user entity.User
+
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
 	// Выполнение SELECT запроса к базе данных для получения бонусов по указанному логину
 	err := db.NewSelect().
-		TableExpr("users").
+		Model(&user).
 		ColumnExpr("balance, withdrawn").
 		Where("login = ?", login).
-		Scan(ctx, &balance, &withdrawn)
+		Scan(ctx)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	return balance, withdrawn, nil
+	return user.Balance, user.Withdrawn, nil
 }
 
 // Debit - обновляя баланс и снимаемые суммы.
