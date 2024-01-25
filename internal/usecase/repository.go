@@ -209,22 +209,16 @@ func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) e
 			Model(userOrder).
 			Set("uploaded_at = ?", now.Format(time.RFC3339)).
 			Exec(ctx)
-		// if err != nil {
-		// 	// Заказ существует
-		// 	if userOrder.Users == user {
-		// 		// Заказ принадлежит текущему пользователю
-		// 		return uc.Err().ErrThisUser
-		// 	}
-		// 	// Заказ принадлежит другому пользователю
-		// 	return uc.Err().ErrAnotherUser
-		// }
+		if err != nil {
+			// Заказ существует
+			if userOrder.Users == user {
+				// Заказ принадлежит текущему пользователю
+				return uc.Err().ErrThisUser
+			}
+			// Заказ принадлежит другому пользователю
+			return uc.Err().ErrAnotherUser
+		}
 		return err
-	}
-	var checkOrder entity.Orders
-	if checkOrder.Users != user && checkOrder.Order == order {
-		return uc.Err().ErrAnotherUser
-	} else if checkOrder.Users == user && checkOrder.Order == order {
-		return uc.Err().ErrThisUser
 	}
 
 	// Обновление баланса пользователя после списания бонусов
