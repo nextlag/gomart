@@ -111,9 +111,7 @@ func (uc *UseCase) Sync() error {
 }
 
 func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string) error {
-
 	orderModel := &entity.Orders{}
-	userModel := &entity.User{}
 
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
@@ -126,17 +124,39 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 		return err
 	}
 
+	// Загружаем актуальные данные о пользователе из базы данных
+	userModel, err := uc.LoadUser(ctx, login)
+	if err != nil {
+		uc.log.Error("error loading user data from the database", err)
+		return err
+	}
+
 	log.Print("\n\nbalance", userModel.Balance+orderAccrual.Accrual)
 	_, err = db.NewUpdate().
 		Model(userModel).
-		Set("balance = ?", userModel.Balance+orderAccrual.Accrual).
+		Set("balance = balance + ?", orderAccrual.Accrual).
 		Where(`login = ?`, login).
 		Exec(ctx)
 	if err != nil {
 		uc.log.Error("error making an update request in user table", err)
 		return err
 	}
+
+	// Повторно запрашиваем баланс после обновления
 	balance, withdrawn, _ := uc.GetBalance(ctx, userModel.Login)
 	log.Print("GetBalance to UpdateStatus: ", balance, " ", withdrawn)
 	return nil
+}
+
+// LoadUser загружает данные пользователя из базы данных по логину
+func (uc *UseCase) LoadUser(ctx context.Context, login string) (*entity.User, error) {
+	userModel := &entity.User{}
+	db := bun.NewDB(uc.DB, pgdialect.New())
+	rows, _ := db.NewSelect().
+		Model(userModel).
+		Where("login = ?", login).
+		Rows(ctx)
+	rows.Err()
+
+	return userModel, nil
 }
