@@ -60,7 +60,6 @@ func GetAccrual(order entity.Orders) OrderResponse {
 func (uc *UseCase) Sync() error {
 	ticker := time.NewTicker(tick)
 	ctx := context.Background()
-	var balance, withdrawn float32
 
 	for range ticker.C {
 
@@ -102,17 +101,16 @@ func (uc *UseCase) Sync() error {
 			log.Print("unfinished", unfinishedOrder)
 			finishedOrder := GetAccrual(unfinishedOrder)
 			log.Print("finished", finishedOrder)
-			balance, withdrawn, err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.Users)
+			err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.Users)
 			if err != nil {
 				return err
 			}
-			log.Print("ACCRUAL: ", balance, " ", withdrawn)
 		}
 	}
 	return nil
 }
 
-func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string) (float32, float32, error) {
+func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string) error {
 
 	orderModel := &entity.Orders{}
 	userModel := &entity.User{}
@@ -125,15 +123,7 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 		Where(`"order" = ?`, orderAccrual.Order).
 		Exec(ctx)
 	if err != nil {
-		return 0, 0, err
-	}
-	// Получение данных пользователя перед обновлением баланса
-	err = db.NewSelect().
-		Model(userModel).
-		Where("login = ?", login).
-		Scan(ctx)
-	if err != nil {
-		return 0, 0, err
+		return err
 	}
 
 	_, err = db.NewUpdate().
@@ -143,9 +133,7 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 		Exec(ctx)
 	if err != nil {
 		uc.log.Error("error making an update request in user table", err)
-		return 0, 0, err
+		return err
 	}
-	balance, withdrawn, _ := uc.GetBalance(ctx, userModel.Login)
-	log.Print("GetBalance to UpdateStatus: ", balance, " ", withdrawn)
-	return balance, withdrawn, nil
+	return nil
 }
