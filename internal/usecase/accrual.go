@@ -57,7 +57,7 @@ func GetAccrual(order entity.Orders) OrderResponse {
 	return orderUpdate
 }
 
-func (uc *UseCase) Sync() (float32, float32, error) {
+func (uc *UseCase) Sync() error {
 	ticker := time.NewTicker(tick)
 	ctx := context.Background()
 	var balance, withdrawn float32
@@ -76,14 +76,14 @@ func (uc *UseCase) Sync() (float32, float32, error) {
 			Rows(ctx)
 		rows.Err()
 		if err != nil {
-			return 0, 0, err
+			return err
 		}
 
 		for rows.Next() {
 			var orderRow entity.Orders
 			err = rows.Scan(&orderRow.Users, &orderRow.Order, &orderRow.Status, &orderRow.Accrual, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn)
 			if err != nil {
-				return 0, 0, err
+				return err
 			}
 			allOrders = append(allOrders, entity.Orders{
 				Users:      orderRow.Users,
@@ -95,7 +95,7 @@ func (uc *UseCase) Sync() (float32, float32, error) {
 		}
 		err = rows.Close()
 		if err != nil {
-			return 0, 0, err
+			return err
 		}
 
 		for _, unfinishedOrder := range allOrders {
@@ -104,11 +104,12 @@ func (uc *UseCase) Sync() (float32, float32, error) {
 			log.Print("finished", finishedOrder)
 			balance, withdrawn, err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.Users)
 			if err != nil {
-				return 0, 0, err
+				return err
 			}
+			log.Print("ACCRUAL: ", balance, " ", withdrawn)
 		}
 	}
-	return balance, withdrawn, nil
+	return nil
 }
 
 func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string) (float32, float32, error) {

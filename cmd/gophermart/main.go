@@ -60,28 +60,13 @@ func main() {
 	r := chi.NewRouter()
 	r.Mount("/", controller.Router(r))
 
-	resultChan := make(chan struct {
-		Balance   float32
-		Withdrawn float32
-		Error     error
-	}, 1)
-
 	go func() {
-		// Ваш код в горутине
-		balance, withdrawn, err := db.Sync()
-		resultChan <- struct {
-			Balance   float32
-			Withdrawn float32
-			Error     error
-		}{balance, withdrawn, err}
+		if err = db.Sync(); err != nil {
+			// Обработка ошибок, например, логирование
+			log.Error("error in uc.Sync()", "error", err.Error())
+		}
 	}()
 
-	result := <-resultChan
-	if result.Error != nil {
-		log.Error("error in uc.Sync()", "error", result.Error.Error())
-	} else {
-		log.Info("Sync completed", "balance", result.Balance, "withdrawn", result.Withdrawn)
-	}
 	// init server
 	srv := setupServer(r)
 
