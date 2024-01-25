@@ -125,6 +125,14 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 	if err != nil {
 		return err
 	}
+	// Получение данных пользователя перед обновлением баланса
+	err = db.NewSelect().
+		Model(userModel).
+		Where("login = ?", login).
+		Scan(ctx)
+	if err != nil {
+		return err
+	}
 
 	log.Print("\n\nbalance", userModel.Balance+orderAccrual.Accrual)
 	_, err = db.NewUpdate().
@@ -136,6 +144,7 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 		uc.log.Error("error making an update request in user table", err)
 		return err
 	}
+	log.Print("\n\nbalance: ", userModel.Balance+orderAccrual.Accrual)
 	balance, withdrawn, _ := uc.GetBalance(ctx, userModel.Login)
 	log.Print("GetBalance to UpdateStatus: ", balance, " ", withdrawn)
 	return nil

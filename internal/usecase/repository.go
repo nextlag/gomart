@@ -159,6 +159,7 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 		Where("login = ?", login).
 		Scan(ctx)
 	if err != nil {
+		uc.log.Error("error finding user's balance", err.Error())
 		return 0, 0, err
 	}
 
