@@ -13,6 +13,7 @@ import (
 	"github.com/nextlag/gomart/internal/usecase"
 )
 
+//go:generate mockgen -destination=mocks/mocks.go -package=mocks github.com/nextlag/gomart/internal/controllers UseCase
 type UseCase interface {
 	Do() *usecase.UseCase
 	DoRegister(ctx context.Context, login, password string, r *http.Request) error

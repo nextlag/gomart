@@ -19,14 +19,13 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request) {
 	// Декодируем JSON-данные из тела запроса в структуру Credentials
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&user); err != nil {
-		c.log.Error("Decode JSON", "Login", user.Login, "error Register handler", err.Error())
+	err := decoder.Decode(&user)
+
+	switch {
+	case err != nil:
+		c.log.Error("failed to process the request")
 		http.Error(w, er.ErrDecodeJSON.Error(), http.StatusBadRequest)
 		return
-	}
-
-	// Проверяем обязательные поля
-	switch {
 	case len(user.Login) == 0:
 		c.log.Info("error: empty login")
 		http.Error(w, er.ErrRequest.Error(), http.StatusBadRequest)

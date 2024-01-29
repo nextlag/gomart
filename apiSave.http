@@ -4,7 +4,7 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
-  "login": "solo",
+  "login": "solo5",
   "password": "12345"
 }
 
@@ -12,10 +12,10 @@ Content-Type: application/json
 POST http://localhost:8080/api/user/login
 Host: localhost:8080
 Content-Type: application/json
-Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6Im5leHQifQ.uFayTG0yvMcs3py3M6-PbOZQUcznJTXVIo5RQLBokv8
+Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG81In0.b8ldRXKv20RCzVv5EqxT6u_Garpvemo5GHOF6lxx4DM
 
 {
-  "login": "next",
+  "login": "solo5",
   "password": "12345"
 }
 
