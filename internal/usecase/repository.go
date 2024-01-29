@@ -15,6 +15,13 @@ import (
 
 const tick = time.Second * 1
 
+// Withdrawals - cтруктура, предназначенная для возврата клиенту данных о заказах со снятыми бонусами.
+type Withdrawals struct {
+	Order string    `json:"order"`
+	Sum   float32   `json:"sum"`
+	Time  time.Time `json:"processed_at"`
+}
+
 // Register registers a new user with the provided login and password.
 func (uc *UseCase) Register(ctx context.Context, login string, password string) error {
 	user := &entity.User{
@@ -34,7 +41,7 @@ func (uc *UseCase) Register(ctx context.Context, login string, password string) 
 	return nil
 }
 
-// ErrAuth authenticates a user with the provided login and password.
+// Auth authenticates a user with the provided login and password.
 func (uc *UseCase) Auth(ctx context.Context, login, password string) error {
 	var user entity.User
 
@@ -237,7 +244,7 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 
 func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, error) {
 	var (
-		allOrders []entity.Withdrawals
+		allOrders []Withdrawals
 		userOrder entity.Orders
 	)
 
@@ -271,7 +278,7 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 			return nil, err
 		}
 
-		allOrders = append(allOrders, entity.Withdrawals{
+		allOrders = append(allOrders, Withdrawals{
 			Order: orderRow.Order,
 			Sum:   orderRow.BonusesWithdrawn,
 			Time:  orderRow.UploadedAt,

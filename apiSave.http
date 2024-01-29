@@ -4,18 +4,24 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
-  "login": "solo",
+  "login": "solo5",
   "password": "12345"
 }
+
+### POST register
+POST http://localhost:8080/api/user/register
+Host: localhost:8080
+Content-Type: application/json
+
 
 ### POST authentication solo
 POST http://localhost:8080/api/user/login
 Host: localhost:8080
 Content-Type: application/json
-Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6Im5leHQifQ.uFayTG0yvMcs3py3M6-PbOZQUcznJTXVIo5RQLBokv8
+Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG81In0.b8ldRXKv20RCzVv5EqxT6u_Garpvemo5GHOF6lxx4DM
 
 {
-  "login": "next",
+  "login": "solo5",
   "password": "12345"
 }
 
@@ -27,6 +33,17 @@ Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG8ifQ.rLfR
 
 {
   "login": "solo",
+  "password": "12345"
+}
+
+### POST authentication solo
+POST http://localhost:8080/api/user/login
+Host: localhost:8080
+Content-Type: application/json
+Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG8ifQ.rLfRajrW0gUYnVIEkTLGCCqhFHfQvDMkFHLoO6fo0y0
+
+{
+  "login": "solo4",
   "password": "12345"
 }
 
