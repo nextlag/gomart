@@ -1,8 +1,9 @@
+// Package entity represents the main business logic structures
 package entity
 
 import "time"
 
-// User - отражает информацию о зарегистрированных пользователях
+// User displays information about registered users
 type User struct {
 	Login     string  `json:"login"`
 	Password  string  `json:"password"`
@@ -10,24 +11,17 @@ type User struct {
 	Withdrawn float32 `json:"withdrawn"`
 }
 
-// Orders - cтруктура, предназначенная для вставки данных в таблицу заказов.
-type Orders struct {
-	Users            string    `bun:"users" json:"users,omitempty"`
-	Order            string    `bun:"order" json:"number"`
-	Status           string    `bun:"status" json:"status"`
+// Order structure intended for inserting data into the orders table.
+type Order struct {
+	UserName         string    `json:"user_name,omitempty"`
+	Order            string    `json:"number"`
+	Status           string    `json:"status"`
 	Accrual          float32   `json:"accrual,omitempty"`
-	UploadedAt       time.Time `bun:"uploaded_at" json:"uploaded_at"`
-	BonusesWithdrawn float32   `bun:"bonuses_withdrawn" json:"bonuses_withdrawn,omitempty"`
+	UploadedAt       time.Time `json:"uploaded_at"`
+	BonusesWithdrawn float32   `json:"bonuses_withdrawn,omitempty"`
 }
 
 type AllEntity struct {
 	*User
-	*Orders
-}
-
-// Withdrawals - cтруктура, предназначенная для возврата клиенту данных о заказах со снятыми бонусами.
-type Withdrawals struct {
-	Order string    `json:"order"`
-	Sum   float32   `json:"sum"`
-	Time  time.Time `json:"processed_at"`
+	*Order
 }

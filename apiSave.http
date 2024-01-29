@@ -4,31 +4,22 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
-  "login": "solo",
+  "login": "solo3",
   "password": "12345"
 }
+
 
 ### POST authentication solo
 POST http://localhost:8080/api/user/login
 Host: localhost:8080
 Content-Type: application/json
-Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6Im5leHQifQ.uFayTG0yvMcs3py3M6-PbOZQUcznJTXVIo5RQLBokv8
+Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG8yIn0.PStmprmbB19P0au0oncXvSu0O06-J9oJK06QoHRvhsc
 
 {
-  "login": "next",
+  "login": "solo2",
   "password": "12345"
 }
 
-### POST authentication solo
-POST http://localhost:8080/api/user/login
-Host: localhost:8080
-Content-Type: application/json
-Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG8ifQ.rLfRajrW0gUYnVIEkTLGCCqhFHfQvDMkFHLoO6fo0y0
-
-{
-  "login": "solo",
-  "password": "12345"
-}
 
 ### POST request with cookie passed through headers and data in the body
 POST http://localhost:8080/api/user/orders
@@ -37,8 +28,8 @@ Content-Type: text/plain
 
 #12345678903
 #31722088874
-#2377225624
-88070083642064
+#88070083642064
+2377225624
 
 ### POST списание бонусов
 POST  http://localhost:8080/api/user/balance/withdraw
@@ -46,13 +37,15 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
-  "order": "12345678903",
+  "order": "31722088874",
   "sum": -10000
 }
 
 
 ### Get orders
 GET http://localhost:8080/api/user/orders
+Host: localhost:8080
+Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG8yIn0.PStmprmbB19P0au0oncXvSu0O06-J9oJK06QoHRvhsc
 
 ### Get balance
 GET http://localhost:8080/api/user/balance

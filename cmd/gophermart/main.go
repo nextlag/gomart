@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	stdLog "log"
 	"log/slog"
@@ -13,15 +14,14 @@ import (
 
 	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/controllers"
-	"github.com/nextlag/gomart/internal/mw/logger"
 	"github.com/nextlag/gomart/internal/repository/psql"
 	"github.com/nextlag/gomart/internal/usecase"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 func setupServer(router http.Handler) *http.Server {
-	// Создание HTTP-сервера с указанным адресом и обработчиком маршрутов
 	return &http.Server{
-		Addr:    config.Cfg.Host, // Получение адреса из настроек
+		Addr:    config.Cfg.Host,
 		Handler: router,
 	}
 }
@@ -30,22 +30,26 @@ func main() {
 	if err := config.MakeConfig(); err != nil {
 		stdLog.Fatal(err)
 	}
+	ctx, cansel := context.WithCancel(context.Background())
+	defer cansel()
+	ctx = l.ContextWithLogger(ctx, l.LoggerNew(config.Cfg.ProjectRoot))
 
 	var (
-		log = logger.SetupLogger()
+		log = l.L(ctx)
 		cfg = config.Cfg
 	)
 
 	log.Debug("initialized flags",
-		slog.String("-a", cfg.Host),
-		slog.String("-d", cfg.DSN),
-		slog.String("-k", cfg.SecretToken),
-		slog.String("-l", cfg.LogLevel.String()),
-		slog.String("-r", cfg.Accrual),
+		l.StringAttr("-a", cfg.Host),
+		l.StringAttr("-d", cfg.DSN),
+		l.StringAttr("-k", cfg.SecretToken),
+		l.StringAttr("-l", cfg.LogLevel.String()),
+		l.StringAttr("-r", cfg.Accrual),
+		l.StringAttr("-p", cfg.ProjectRoot),
 	)
 
 	// init repository
-	db, err := psql.New(cfg.DSN, log)
+	db, err := psql.New(ctx, cfg.DSN)
 	if err != nil {
 		log.Error("failed to connect in database", "error main", err.Error())
 		os.Exit(1)
@@ -53,38 +57,42 @@ func main() {
 	defer db.Close()
 
 	// init usecase
-	uc := usecase.New(db, log, cfg)
+	uc := usecase.New(db, cfg)
 
 	// init controllers
-	controller := controllers.New(uc, log)
+	controller := controllers.New(ctx, uc)
 	r := chi.NewRouter()
 	r.Mount("/", controller.Router(r))
 
-	go func() {
-		if err = db.Sync(); err != nil {
-			// Обработка ошибок, например, логирование
-			log.Error("error in uc.Sync()", "error", err.Error())
-		}
-	}()
-
 	// init server
 	srv := setupServer(r)
-
 	log.Info("server starting", slog.String("host", srv.Addr))
 
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	// Запуск HTTP-сервера в горутине
+	stop := make(chan struct{})
+	defer close(stop)
+
 	go func() {
-		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			// Если сервер не стартовал, логируем ошибку
-			log.Error("failed to start server", "error main", err.Error())
-			done <- os.Interrupt
+		if err = db.Sync(ctx, stop); err != nil {
+			log.Error("db.Sync()", l.ErrAttr(err))
+			sigs <- os.Interrupt
+			return
 		}
 	}()
-	log.Info("server started")
 
-	<-done // Ожидание сигнала завершения
+	go func() {
+		// Закрытие канала stop при завершении работы функции
+		defer close(stop)
+		if err = srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("failed to start server", "error", err.Error())
+			sigs <- os.Interrupt
+			return
+		}
+	}()
+
+	log.Info("server started")
+	<-sigs
 	log.Info("server stopped")
 }

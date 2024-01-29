@@ -1,3 +1,4 @@
+// Package usecase containing major errors
 package usecase
 
 import (

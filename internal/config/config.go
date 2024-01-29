@@ -14,6 +14,7 @@ type HTTPServer struct {
 	SecretToken string     `json:"secret_token" env:"SECRET_TOKEN" envDefault:"sky-go-mart"`
 	LogLevel    slog.Level `json:"log_level" env:"LOG_LEVEL"`
 	Accrual     string     `json:"accrual" env:"ACCRUAL_SYSTEM_ADDRESS" envDefault:"http://localhost:8081"`
+	ProjectRoot string     `json:"projectRoot" env:"PROJECT ROOT" envDefault:"/Users/nextbug/GoProjects/gomart/"`
 }
 
 var Cfg HTTPServer
@@ -24,6 +25,7 @@ func MakeConfig() error {
 	flag.StringVar(&Cfg.SecretToken, "k", Cfg.SecretToken, "Secret key for the token")
 	flag.Var(&LogLevelValue{&Cfg.LogLevel}, "l", "Log level (debug, info, warn, error)")
 	flag.StringVar(&Cfg.Accrual, "r", Cfg.Accrual, "Accrual system address")
+	flag.StringVar(&Cfg.ProjectRoot, "p", Cfg.ProjectRoot, "Path to the current project")
 	flag.Parse()
 	return env.Parse(&Cfg)
 }

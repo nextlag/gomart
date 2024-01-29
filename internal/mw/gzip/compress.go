@@ -1,3 +1,4 @@
+// Package gzip that provides gzip compression and decompression for HTTP requests and responses
 package gzip
 
 import (

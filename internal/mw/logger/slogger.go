@@ -1,16 +1,14 @@
+// Package logger - middleware logger
 package logger
 
 import (
-	"log/slog"
+	"context"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/nextlag/gomart/internal/config"
-	"github.com/nextlag/gomart/internal/usecase"
-	"github.com/nextlag/gomart/pkg/logger/slogpretty"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 // RequestFields содержит поля запроса для логгера.
@@ -27,10 +25,23 @@ type RequestFields struct {
 	Compress    string `json:"compress"`
 }
 
-// New создает и возвращает новый middleware для логирования HTTP запросов.
-func New(log usecase.Logger) func(next http.Handler) http.Handler {
+// New создает middleware для логирования HTTP-запросов.
+//
+// Эта функция принимает логгер как параметр и возвращает middleware для обработки HTTP-запросов.
+// Middleware логирует информацию о каждом HTTP-запросе, включая метод, путь, IP-адрес клиента,
+// заголовок User-Agent, идентификатор запроса, тип контента запроса, статус ответа, количество байтов ответа,
+// продолжительность запроса и используемое сжатие (если применяется).
+// Если статус ответа является ошибкой (>= 500), логируется информация об ошибке.
+//
+// Параметры:
+//   - log: usecase.Logger - логгер для записи информации о запросах и ошибках.
+//
+// Возвращаемые значения:
+//   - func(http.Handler) http.Handler: middleware для логирования HTTP-запросов.
+func New(ctx context.Context) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
+			log := l.L(ctx)
 			// Создаем логгер запроса
 			requestFields := RequestFields{
 				Method:      r.Method,
@@ -66,25 +77,3 @@ func New(log usecase.Logger) func(next http.Handler) http.Handler {
 		return http.HandlerFunc(fn)
 	}
 }
-
-// SetupLogger - инициализация middleware для логирования HTTP-запросов
-func SetupLogger() usecase.Logger {
-	opts := slogpretty.PrettyHandlerOptions{
-		SlogOpts: &slog.HandlerOptions{
-			Level: config.Cfg.LogLevel,
-		},
-	}
-
-	handler := opts.NewPrettyHandler(os.Stdout)
-
-	return slog.New(handler)
-}
-
-// func SetupLogger() *slog.Logger {
-// 	var log *slog.Logger
-// 	log = slog.New(
-// 		// slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-// 		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-// 	)
-// 	return log
-// }
