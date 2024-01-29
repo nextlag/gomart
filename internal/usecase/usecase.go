@@ -15,7 +15,7 @@ type Logger interface {
 	Error(msg string, args ...any)
 }
 
-//go:generate mockgen -destination=mocks/mocks.go -package=mocks github.com/nextlag/gomart/internal/usecase Repository
+//go:generate mockgen -destination=mocks.go -package=usecase github.com/nextlag/gomart/internal/usecase Repository
 type Repository interface {
 	// Register - регистрация пользователя
 	Register(ctx context.Context, login, password string) error
@@ -42,9 +42,8 @@ type UseCase struct {
 }
 
 func New(r Repository, l Logger, cfg config.HTTPServer) *UseCase {
-	var db *sql.DB
 	e := &entity.AllEntity{}
-	return &UseCase{repo: r, log: l, cfg: cfg, entity: e, DB: db}
+	return &UseCase{repo: r, log: l, cfg: cfg, entity: e}
 }
 func (uc *UseCase) GetEntity() *entity.AllEntity {
 	return uc.entity
