@@ -39,7 +39,7 @@ func (c Controller) Router(handler *chi.Mux) *chi.Mux {
 	handler.Use(logger.New(c.log))
 	handler.Use(middleware.Logger)
 	handler.Use(gzip.New())
-
+	handler.Use(middleware.Recoverer)
 	h := New(c.uc, c.log)
 
 	handler.Group(func(r chi.Router) {

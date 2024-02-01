@@ -20,22 +20,28 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	err := decoder.Decode(&user)
+	defer func() {
+		if panicErr := recover(); panicErr != nil {
+			c.log.Error("panic during JSON decoding", "error", panicErr, "body", r.Body)
+			http.Error(w, er.ErrDecodeJSON.Error(), http.StatusBadRequest)
+		}
+	}()
 
 	switch {
 	case err != nil:
-		c.log.Error("failed to process the request")
+		c.log.Error("failed to process the request", "error", err.Error())
 		http.Error(w, er.ErrDecodeJSON.Error(), http.StatusBadRequest)
 		return
 	case len(user.Login) == 0:
-		c.log.Info("error: empty login")
+		c.log.Error("error: empty login", "error", err, "login", user.Login)
 		http.Error(w, er.ErrRequest.Error(), http.StatusBadRequest)
 		return
 	case len(user.Password) == 0:
-		c.log.Info("generating password")
 		user.Password = generatestring.NewRandomString(8)
+		c.log.Info("generating password", "login", user.Login, "password", user.Password)
 	}
 
-	c.log.Debug("authorization", "login", user.Login, "password", user.Password)
+	c.log.Debug("findings", "login", user.Login, "password", user.Password)
 
 	// Вызываем метод DoRegister UseCase для выполнения регистрации
 	if err := c.uc.DoRegister(r.Context(), user.Login, user.Password, r); err != nil {
@@ -60,7 +66,7 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, er.ErrInternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
-	c.log.Debug("authentication", "login", user.Login, "token", jwt)
+	c.log.Debug("authentication", "login", user.Login, "password", user.Password, "token", jwt)
 
 	// Возвращаем успешный статус и сообщение об успешной регистрации
 	w.WriteHeader(http.StatusOK)

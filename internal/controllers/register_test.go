@@ -50,18 +50,18 @@ func TestRegistrationHandler(t *testing.T) {
 			body: `{"login": "test", "password": "test"}`,
 		},
 		{
-			name: "Registration success password generation",
+			name: "Empty password",
 			want: want{
 				statusCode: 200,
 			},
 			body: `{"login": "test"}`,
 		},
 		{
-			name: "Empty line",
+			name: "Empty login",
 			want: want{
 				statusCode: 400,
 			},
-			body: `{"login": "", "password": ""}`,
+			body: `{"password": "12345"}`,
 		},
 		{
 			name: "Invalid request",
@@ -76,6 +76,19 @@ func TestRegistrationHandler(t *testing.T) {
 				statusCode: 400,
 			},
 			body: "",
+		},
+		{
+			name: "Empty JSON request",
+			want: want{
+				statusCode: 400,
+			},
+			body: `{}`,
+		},
+		{
+			name: "Empty",
+			want: want{
+				statusCode: 400,
+			},
 		},
 	}
 

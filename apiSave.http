@@ -8,6 +8,12 @@ Content-Type: application/json
   "password": "12345"
 }
 
+### POST register
+POST http://localhost:8080/api/user/register
+Host: localhost:8080
+Content-Type: application/json
+
+
 ### POST authentication solo
 POST http://localhost:8080/api/user/login
 Host: localhost:8080
