@@ -60,12 +60,12 @@ func main() {
 	r := chi.NewRouter()
 	r.Mount("/", controller.Router(r))
 
-	// go func() {
-	// 	if err = db.Sync(); err != nil {
-	// 		// Обработка ошибок, например, логирование
-	// 		log.Error("error in uc.Sync()", "error", err.Error())
-	// 	}
-	// }()
+	go func() {
+		if err = db.Sync(); err != nil {
+			// Обработка ошибок, например, логирование
+			log.Error("error in uc.Sync()", "error", err.Error())
+		}
+	}()
 
 	// init server
 	srv := setupServer(r)
