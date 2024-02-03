@@ -40,17 +40,16 @@ func (c Controller) Router(handler *chi.Mux) *chi.Mux {
 	handler.Use(middleware.Logger)
 	handler.Use(gzip.New())
 	handler.Use(middleware.Recoverer)
-	h := New(c.uc, c.log)
 
 	handler.Group(func(r chi.Router) {
-		r.Post("/api/user/register", h.Register)
-		r.Post("/api/user/login", h.Authentication)
+		r.Post("/api/user/register", c.Register)
+		r.Post("/api/user/login", c.Authentication)
 		r.With(auth.CookieAuthentication(c.log, c.uc.Do().Err())).Group(func(r chi.Router) {
-			r.Post("/api/user/orders", h.PostOrders)
-			r.Post("/api/user/balance/withdraw", h.Withdraw)
-			r.Get("/api/user/withdrawals", h.Withdrawals)
-			r.Get("/api/user/balance", h.Balance)
-			r.Get("/api/user/orders", h.GetOrders)
+			r.Post("/api/user/orders", c.PostOrders)
+			r.Post("/api/user/balance/withdraw", c.Withdraw)
+			r.Get("/api/user/withdrawals", c.Withdrawals)
+			r.Get("/api/user/balance", c.Balance)
+			r.Get("/api/user/orders", c.GetOrders)
 		})
 	})
 	return handler

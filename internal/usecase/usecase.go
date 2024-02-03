@@ -42,9 +42,8 @@ type UseCase struct {
 }
 
 func New(r Repository, l Logger, cfg config.HTTPServer) *UseCase {
-	var db *sql.DB
 	e := &entity.AllEntity{}
-	return &UseCase{repo: r, log: l, cfg: cfg, entity: e, DB: db}
+	return &UseCase{repo: r, log: l, cfg: cfg, entity: e}
 }
 func (uc *UseCase) GetEntity() *entity.AllEntity {
 	return uc.entity
