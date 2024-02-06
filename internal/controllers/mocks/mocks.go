@@ -6,7 +6,6 @@ package mocks
 
 import (
 	context "context"
-	http "net/http"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -51,17 +50,17 @@ func (mr *MockUseCaseMockRecorder) Do() *gomock.Call {
 }
 
 // DoAuth mocks base method.
-func (m *MockUseCase) DoAuth(arg0 context.Context, arg1, arg2 string, arg3 *http.Request) error {
+func (m *MockUseCase) DoAuth(arg0 context.Context, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DoAuth", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "DoAuth", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DoAuth indicates an expected call of DoAuth.
-func (mr *MockUseCaseMockRecorder) DoAuth(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockUseCaseMockRecorder) DoAuth(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoAuth", reflect.TypeOf((*MockUseCase)(nil).DoAuth), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoAuth", reflect.TypeOf((*MockUseCase)(nil).DoAuth), arg0, arg1, arg2)
 }
 
 // DoDebit mocks base method.
@@ -139,15 +138,15 @@ func (mr *MockUseCaseMockRecorder) DoInsertOrder(arg0, arg1, arg2 interface{}) *
 }
 
 // DoRegister mocks base method.
-func (m *MockUseCase) DoRegister(arg0 context.Context, arg1, arg2 string, arg3 *http.Request) error {
+func (m *MockUseCase) DoRegister(arg0 context.Context, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DoRegister", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "DoRegister", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DoRegister indicates an expected call of DoRegister.
-func (mr *MockUseCaseMockRecorder) DoRegister(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockUseCaseMockRecorder) DoRegister(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoRegister", reflect.TypeOf((*MockUseCase)(nil).DoRegister), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoRegister", reflect.TypeOf((*MockUseCase)(nil).DoRegister), arg0, arg1, arg2)
 }

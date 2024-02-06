@@ -8,9 +8,10 @@ import (
 	"github.com/nextlag/gomart/internal/mw/auth"
 )
 
-func (c Controller) Authentication(w http.ResponseWriter, r *http.Request) {
-	user := c.uc.Do().GetEntity()
-	er := c.uc.Do().Err()
+func (c *Controller) Authentication(w http.ResponseWriter, r *http.Request) {
+	uc := c.uc.Do()
+	user := uc.GetEntity()
+	er := uc.Err()
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
@@ -19,7 +20,7 @@ func (c Controller) Authentication(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, er.ErrDecodeJSON.Error(), http.StatusBadRequest)
 		return
 	}
-	if err := c.uc.DoAuth(r.Context(), user.Login, user.Password, r); err != nil {
+	if err := uc.Auth(r.Context(), user.Login, user.Password); err != nil {
 		c.log.Error("incorrect login or password", "error Login handler", err.Error())
 		http.Error(w, er.ErrUnauthorized.Error(), http.StatusUnauthorized)
 		return

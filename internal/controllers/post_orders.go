@@ -9,8 +9,9 @@ import (
 	"github.com/nextlag/gomart/internal/mw/auth"
 )
 
-func (c Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
-	er := c.uc.Do().Err()
+func (c *Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
+	uc := c.uc.Do()
+	er := uc.Err()
 	// Получаем логин из контекста
 	user, _ := r.Context().Value(auth.LoginKey).(string)
 	c.log.Debug("get user PostOrders", "user", user)
@@ -28,7 +29,7 @@ func (c Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = c.uc.DoInsertOrder(r.Context(), user, order)
+	err = uc.InsertOrder(r.Context(), user, order)
 	switch {
 	case errors.Is(err, er.ErrOrderFormat):
 		c.log.Error("insert Order 422", "error", err.Error())

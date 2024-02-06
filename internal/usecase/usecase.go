@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"database/sql"
-	"net/http"
 
 	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/entity"
@@ -51,29 +50,30 @@ func (uc *UseCase) GetEntity() *entity.AllEntity {
 func (uc *UseCase) Do() *UseCase {
 	return uc
 }
-func (uc *UseCase) DoRegister(ctx context.Context, login, password string, _ *http.Request) error {
-	err := uc.repo.Register(ctx, login, password)
-	return err
-}
-func (uc *UseCase) DoAuth(ctx context.Context, login, password string, _ *http.Request) error {
-	return uc.repo.Auth(ctx, login, password)
-}
-func (uc *UseCase) DoInsertOrder(ctx context.Context, user string, order string) error {
-	return uc.repo.InsertOrder(ctx, user, order)
-}
 
-func (uc *UseCase) DoGetOrders(ctx context.Context, user string) ([]byte, error) {
-	return uc.repo.GetOrders(ctx, user)
-}
-
-func (uc *UseCase) DoGetBalance(ctx context.Context, login string) (float32, float32, error) {
-	return uc.repo.GetBalance(ctx, login)
-}
-
-func (uc *UseCase) DoDebit(ctx context.Context, user, order string, sum float32) error {
-	return uc.repo.Debit(ctx, user, order, sum)
-}
-
-func (uc *UseCase) DoGetWithdrawals(ctx context.Context, user string) ([]byte, error) {
-	return uc.repo.GetWithdrawals(ctx, user)
-}
+// func (uc *UseCase) DoRegister(ctx context.Context, login, password string, _ *http.Request) error {
+// 	err := uc.repo.Register(ctx, login, password)
+// 	return err
+// }
+// func (uc *UseCase) DoAuth(ctx context.Context, login, password string, _ *http.Request) error {
+// 	return uc.repo.Auth(ctx, login, password)
+// }
+// func (uc *UseCase) DoInsertOrder(ctx context.Context, user string, order string) error {
+// 	return uc.repo.InsertOrder(ctx, user, order)
+// }
+//
+// func (uc *UseCase) DoGetOrders(ctx context.Context, user string) ([]byte, error) {
+// 	return uc.repo.GetOrders(ctx, user)
+// }
+//
+// func (uc *UseCase) DoGetBalance(ctx context.Context, login string) (float32, float32, error) {
+// 	return uc.repo.GetBalance(ctx, login)
+// }
+//
+// func (uc *UseCase) DoDebit(ctx context.Context, user, order string, sum float32) error {
+// 	return uc.repo.Debit(ctx, user, order, sum)
+// }
+//
+// func (uc *UseCase) DoGetWithdrawals(ctx context.Context, user string) ([]byte, error) {
+// 	return uc.repo.GetWithdrawals(ctx, user)
+// }

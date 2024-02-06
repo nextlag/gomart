@@ -101,16 +101,16 @@ func TestRegistrationHandler(t *testing.T) {
 			repo.EXPECT().Do().Return(uc).Times(2)
 			switch {
 			case tt.name == "Internal server error":
-				repo.EXPECT().DoRegister(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("internal server error")).Times(1)
+				repo.EXPECT().DoRegister(context.Background(), gomock.Any(), gomock.Any()).Return(errors.New("internal server error")).Times(1)
 			case tt.name == "Duplicate login":
 				// создаем экземпляр pq.Error
 				err := pq.Error{
 					Message: "pq: duplicate key value violates unique constraint \"users_pkey\"",
 					Code:    "23505",
 				}
-				repo.EXPECT().DoRegister(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&err).Times(1)
+				repo.EXPECT().DoRegister(context.Background(), gomock.Any(), gomock.Any()).Return(&err).Times(1)
 			default:
-				repo.EXPECT().DoRegister(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+				repo.EXPECT().DoRegister(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 			}
 			r, err := http.NewRequest(http.MethodPost, "/api/user/register", bytes.NewBufferString(tt.body))
 			w := httptest.NewRecorder()
@@ -153,9 +153,9 @@ func TestAuthenticationHandler(t *testing.T) {
 			ctrl, repo, uc := controller(t)
 			repo.EXPECT().Do().Return(uc).Times(2)
 			if tt.name == "NoValid auth" {
-				repo.EXPECT().DoAuth(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("unauthorized")).Times(1)
+				repo.EXPECT().DoAuth(context.Background(), gomock.Any(), gomock.Any()).Return(errors.New("unauthorized")).Times(1)
 			}
-			repo.EXPECT().DoAuth(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+			repo.EXPECT().DoAuth(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 			r, err := http.NewRequest(http.MethodPost, "/api/user/login", bytes.NewBufferString(tt.body))
 			w := httptest.NewRecorder()
 			handler := http.HandlerFunc(ctrl.Authentication)

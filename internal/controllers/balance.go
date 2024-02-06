@@ -12,9 +12,10 @@ type userBalance struct {
 	Withdrawn float32 `json:"withdrawn"`
 }
 
-func (c Controller) Balance(w http.ResponseWriter, r *http.Request) {
+func (c *Controller) Balance(w http.ResponseWriter, r *http.Request) {
 	login, _ := r.Context().Value(auth.LoginKey).(string)
-	balance, withdrawn, err := c.uc.DoGetBalance(r.Context(), login)
+	uc := c.uc.Do()
+	balance, withdrawn, err := uc.GetBalance(r.Context(), login)
 	if err != nil {
 		c.log.Error("Balance handler", "balance", balance, "withdrawn", withdrawn, "error", err.Error())
 		http.Error(w, "error get balance", http.StatusInternalServerError)

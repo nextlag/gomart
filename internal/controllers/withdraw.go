@@ -14,8 +14,9 @@ type debit struct {
 	Sum   float32 `json:"sum"`
 }
 
-func (c Controller) Withdraw(w http.ResponseWriter, r *http.Request) {
-	er := c.uc.Do().Err()
+func (c *Controller) Withdraw(w http.ResponseWriter, r *http.Request) {
+	uc := c.uc.Do()
+	er := uc.Err()
 	// Получаем логин из контекста
 	user, _ := r.Context().Value(auth.LoginKey).(string)
 	var request debit
@@ -24,7 +25,7 @@ func (c Controller) Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.log.Debug("debet request", "user", user, "order", request.Order, "sum", request.Sum)
-	err := c.uc.Do().DoDebit(r.Context(), user, request.Order, request.Sum)
+	err := uc.Debit(r.Context(), user, request.Order, request.Sum)
 	switch {
 	case errors.Is(err, er.ErrNoBalance):
 		c.log.Error("there are insufficient funds in the account", "NoBalance", er.ErrNoBalance.Error())

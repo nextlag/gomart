@@ -7,12 +7,13 @@ import (
 	"github.com/nextlag/gomart/internal/mw/auth"
 )
 
-func (c Controller) Withdrawals(w http.ResponseWriter, r *http.Request) {
-	er := c.uc.Do().Err()
+func (c *Controller) Withdrawals(w http.ResponseWriter, r *http.Request) {
+	uc := c.uc.Do()
+	er := uc.Err()
 	// Получаем логин из контекста
 	user, _ := r.Context().Value(auth.LoginKey).(string)
 
-	result, err := c.uc.DoGetWithdrawals(r.Context(), user)
+	result, err := uc.GetWithdrawals(r.Context(), user)
 	switch {
 	case errors.Is(err, er.ErrNoRows):
 		c.log.Error("withdrawals handler", "error no rows", err.Error())

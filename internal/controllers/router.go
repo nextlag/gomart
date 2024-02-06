@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -16,8 +15,8 @@ import (
 //go:generate mockgen -destination=mocks/mocks.go -package=mocks github.com/nextlag/gomart/internal/controllers UseCase
 type UseCase interface {
 	Do() *usecase.UseCase
-	DoRegister(ctx context.Context, login, password string, r *http.Request) error
-	DoAuth(ctx context.Context, login, password string, r *http.Request) error
+	DoRegister(ctx context.Context, login, password string) error
+	DoAuth(ctx context.Context, login, password string) error
 	DoInsertOrder(ctx context.Context, user, order string) error
 	DoGetOrders(ctx context.Context, user string) ([]byte, error)
 	DoGetBalance(ctx context.Context, login string) (float32, float32, error)
@@ -34,7 +33,7 @@ func New(uc UseCase, log usecase.Logger) *Controller {
 	return &Controller{uc: uc, log: log}
 }
 
-func (c Controller) Router(handler *chi.Mux) *chi.Mux {
+func (c *Controller) Router(handler *chi.Mux) *chi.Mux {
 	handler.Use(middleware.RequestID)
 	handler.Use(logger.New(c.log))
 	handler.Use(middleware.Logger)

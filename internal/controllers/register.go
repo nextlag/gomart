@@ -13,9 +13,10 @@ import (
 )
 
 // Register обрабатывает HTTP-запросы для регистрации пользователя.
-func (c Controller) Register(w http.ResponseWriter, r *http.Request) {
-	user := c.uc.Do().GetEntity()
-	er := c.uc.Do().Err()
+func (c *Controller) Register(w http.ResponseWriter, r *http.Request) {
+	uc := c.uc.Do()
+	user := uc.GetEntity()
+	er := uc.Err()
 	// Декодируем JSON-данные из тела запроса в структуру Credentials
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
@@ -44,7 +45,7 @@ func (c Controller) Register(w http.ResponseWriter, r *http.Request) {
 	c.log.Debug("findings", "login", user.Login, "password", user.Password)
 
 	// Вызываем метод DoRegister UseCase для выполнения регистрации
-	if err := c.uc.DoRegister(r.Context(), user.Login, user.Password, r); err != nil {
+	if err := uc.Register(r.Context(), user.Login, user.Password); err != nil {
 		// Обрабатываем ошибку регистрации
 		var pqErr *pq.Error
 		isPGError := errors.As(err, &pqErr)
