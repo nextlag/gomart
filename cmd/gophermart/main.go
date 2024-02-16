@@ -76,9 +76,6 @@ func main() {
 		}
 	}()
 
-	// Ожидание завершения всех горутин
-	wg.Wait()
-
 	// init server
 	srv := setupServer(r)
 
@@ -99,4 +96,7 @@ func main() {
 
 	<-done // Ожидание сигнала завершения
 	log.Info("server stopped")
+
+	// Ожидание завершения всех горутин
+	wg.Wait()
 }
