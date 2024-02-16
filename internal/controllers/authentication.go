@@ -8,7 +8,11 @@ import (
 	"github.com/nextlag/gomart/internal/mw/auth"
 )
 
-func (c Controller) Authentication(w http.ResponseWriter, r *http.Request) {
+// Authentication processes the user authentication request.
+// It extracts user data from the request body, calls the DoAuth method from the use case
+// to check the correctness of the login and password, and in case of successful authentication sets
+// authentication cookie and returns a successful status.
+func (c *Controller) Authentication(w http.ResponseWriter, r *http.Request) {
 	user := c.uc.Do().GetEntity()
 	er := c.uc.Do().Err()
 

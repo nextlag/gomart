@@ -12,8 +12,10 @@ import (
 	"github.com/nextlag/gomart/pkg/generatestring"
 )
 
-// Register обрабатывает HTTP-запросы для регистрации пользователя.
-func (c Controller) Register(w http.ResponseWriter, r *http.Request) {
+// Register - designed to process HTTP POST requests containing user registration data.
+// It accepts data from the client in JSON format, registers a new user, and also sets an
+// authentication cookie after successful registration.
+func (c *Controller) Register(w http.ResponseWriter, r *http.Request) {
 	user := c.uc.Do().GetEntity()
 	er := c.uc.Do().Err()
 	// Декодируем JSON-данные из тела запроса в структуру Credentials

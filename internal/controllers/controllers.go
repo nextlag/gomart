@@ -1,3 +1,6 @@
+// Package controllers provides HTTP request handlers for various endpoints in the application.
+// These handlers are responsible for processing incoming requests, invoking corresponding
+// methods from the use case layer, and returning appropriate responses.
 package controllers
 
 import (
@@ -34,7 +37,7 @@ func New(uc UseCase, log usecase.Logger) *Controller {
 	return &Controller{uc: uc, log: log}
 }
 
-func (c Controller) Router(handler *chi.Mux) *chi.Mux {
+func (c *Controller) Router(handler *chi.Mux) *chi.Mux {
 	handler.Use(middleware.RequestID)
 	handler.Use(logger.New(c.log))
 	handler.Use(middleware.Logger)

@@ -7,7 +7,9 @@ import (
 	"github.com/nextlag/gomart/internal/mw/auth"
 )
 
-func (c Controller) Withdrawals(w http.ResponseWriter, r *http.Request) {
+// Withdrawals - designed to process HTTP GET requests aimed at obtaining information about bonus
+// debits from the user's account. It returns a list of bonus write-off transactions in JSON format.
+func (c *Controller) Withdrawals(w http.ResponseWriter, r *http.Request) {
 	er := c.uc.Do().Err()
 	// Получаем логин из контекста
 	user, _ := r.Context().Value(auth.LoginKey).(string)

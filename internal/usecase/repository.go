@@ -1,3 +1,4 @@
+// Package usecase provides the application's business logic.
 package usecase
 
 import (
@@ -15,7 +16,7 @@ import (
 
 const tick = time.Second * 1
 
-// Withdrawals - cтруктура, предназначенная для возврата клиенту данных о заказах со снятыми бонусами.
+// Withdrawals structure designed to return data to the client about orders with removed bonuses.
 type Withdrawals struct {
 	Order string    `json:"order"`
 	Sum   float32   `json:"sum"`
@@ -172,7 +173,7 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 	return user.Balance, user.Withdrawn, nil
 }
 
-// Debit выполняет списание бонусов со счета пользователя за определенный заказ.
+// Debit debits bonuses from the user's account for a specific order.
 func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum float32) error {
 	// Проверка корректности номера заказа
 	validOrder := luna.CheckValidOrder(order)
@@ -242,6 +243,7 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 	return nil
 }
 
+// GetWithdrawals method for getting all orders with bonuses removed for a specific user.
 func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, error) {
 	var (
 		allOrders []Withdrawals

@@ -60,12 +60,23 @@ func main() {
 	r := chi.NewRouter()
 	r.Mount("/", controller.Router(r))
 
-	go func() {
-		if err = db.Sync(); err != nil {
-			// Обработка ошибок, например, логирование
-			log.Error("error in uc.Sync()", "error", err.Error())
-		}
-	}()
+	// // Инициализация счетчика WaitGroup
+	// var wg sync.WaitGroup
+	//
+	// // Увеличение счетчика горутин
+	// wg.Add(1)
+	//
+	// go func() {
+	// 	defer wg.Done() // Уменьшение счетчика горутин при завершении работы
+	//
+	// 	if err = db.Sync(); err != nil {
+	// 		// Обработка ошибок, например, логирование
+	// 		log.Error("error in uc.Sync()", "error", err.Error())
+	// 	}
+	// }()
+	//
+	// // Ожидание завершения всех горутин
+	// wg.Wait()
 
 	// init server
 	srv := setupServer(r)

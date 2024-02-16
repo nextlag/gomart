@@ -1,3 +1,4 @@
+// Package gzip - middleware gzip
 package gzip
 
 import (
@@ -5,6 +6,7 @@ import (
 	"strings"
 )
 
+// New - middleware gzip initialization
 func New() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {

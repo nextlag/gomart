@@ -1,8 +1,9 @@
+// Package entity represents the main business logic structures
 package entity
 
 import "time"
 
-// User - отражает информацию о зарегистрированных пользователях
+// User displays information about registered users
 type User struct {
 	Login     string  `json:"login"`
 	Password  string  `json:"password"`
@@ -10,7 +11,7 @@ type User struct {
 	Withdrawn float32 `json:"withdrawn"`
 }
 
-// Orders - cтруктура, предназначенная для вставки данных в таблицу заказов.
+// Order structure intended for inserting data into the orders table.
 type Orders struct {
 	Users            string    `json:"users,omitempty"`
 	Order            string    `json:"number"`

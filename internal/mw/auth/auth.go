@@ -1,4 +1,4 @@
-// Package auth - предоставляет функциональность аутентификации пользователя с использованием JSON Web Tokens (JWT) и файлов cookie.
+// Package auth - provides user authentication functionality using JSON Web Tokens (JWT) and cookies.
 package auth
 
 import (

@@ -14,7 +14,10 @@ type debit struct {
 	Sum   float32 `json:"sum"`
 }
 
-func (c Controller) Withdraw(w http.ResponseWriter, r *http.Request) {
+// Withdraw - designed to process HTTP POST requests containing requests to write off bonuses
+// from the user's account for a specific order. It accepts data from the client in JSON format,
+// writes off bonuses and returns the corresponding HTTP status
+func (c *Controller) Withdraw(w http.ResponseWriter, r *http.Request) {
 	er := c.uc.Do().Err()
 	// Получаем логин из контекста
 	user, _ := r.Context().Value(auth.LoginKey).(string)

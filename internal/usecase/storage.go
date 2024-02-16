@@ -1,3 +1,4 @@
+// Package usecase - creating database tables
 package usecase
 
 import (
@@ -22,7 +23,7 @@ const (
 	);`
 )
 
-// CreateTable - создает таблицу в базе данных
+// CreateTable - creating tables in the database
 func (uc *UseCase) CreateTable(ctx context.Context) error {
 	_, err := uc.DB.ExecContext(ctx, usersTable)
 	if err != nil {
@@ -37,7 +38,7 @@ func (uc *UseCase) CreateTable(ctx context.Context) error {
 	return nil
 }
 
-// Close - закрывает соединение с базой данных
+// Close - closing the connection to the database
 func (uc *UseCase) Close() {
 	err := uc.DB.Close()
 	if err != nil {

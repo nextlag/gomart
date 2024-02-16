@@ -9,13 +9,14 @@ import (
 	"github.com/nextlag/gomart/internal/mw/auth"
 )
 
-func (c Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
+// PostOrders - designed to process HTTP POST requests containing information about orders.
+// It accepts data from the client, inserts the order into the database and returns the
+// appropriate HTTP status depending on the result of the operation.
+func (c *Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
 	er := c.uc.Do().Err()
-	// Получаем логин из контекста
 	user, _ := r.Context().Value(auth.LoginKey).(string)
 	c.log.Debug("get user PostOrders", "user", user)
 
-	// Чтение тела запроса
 	body, err := io.ReadAll(r.Body)
 	order := string(body)
 	switch {
@@ -46,7 +47,6 @@ func (c Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, er.ErrOrderAccepted.Error(), http.StatusAccepted)
 	}
 
-	// Обработка успешного запроса
 	c.log.Info("order received", "user", user, "order", order)
 	o := fmt.Sprintf("order number: %s\n", order)
 	w.Write([]byte(o))

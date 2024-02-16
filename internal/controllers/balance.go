@@ -12,7 +12,10 @@ type userBalance struct {
 	Withdrawn float32 `json:"withdrawn"`
 }
 
-func (c Controller) Balance(w http.ResponseWriter, r *http.Request) {
+// Balance processes the request to get the user's balance.
+// It retrieves the user's login from the request context, calls the DoGetBalance method from the use case,
+// to get the current balance and amount of user debits, and returns this data in JSON format.
+func (c *Controller) Balance(w http.ResponseWriter, r *http.Request) {
 	login, _ := r.Context().Value(auth.LoginKey).(string)
 	balance, withdrawn, err := c.uc.DoGetBalance(r.Context(), login)
 	if err != nil {

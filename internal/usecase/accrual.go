@@ -1,3 +1,4 @@
+// Package usecase provides business logic for interacting with the database and external service.
 package usecase
 
 import (
@@ -13,14 +14,15 @@ import (
 	"github.com/nextlag/gomart/internal/entity"
 )
 
-// OrderResponse - cтруктура предназначена для получения данных из системы начисления
+// OrderResponse structure is designed to receive data from the accrual system
 type OrderResponse struct {
 	Order   string  `json:"order"`
 	Status  string  `json:"status"`
 	Accrual float32 `json:"accrual"`
 }
 
-// GetAccrual функция, выполняющая HTTP-запрос и возвращающая структуру OrderResponse
+// GetAccrual is a function that sends an HTTP request and returns an OrderResponse structure.
+// The function receives order data from the accrual system.
 func GetAccrual(order entity.Orders) OrderResponse {
 	client := resty.New().SetBaseURL(config.Cfg.Accrual)
 	var orderUpdate OrderResponse
@@ -51,12 +53,15 @@ func GetAccrual(order entity.Orders) OrderResponse {
 
 		if orderUpdate.Status == "INVALID" || orderUpdate.Status == "PROCESSED" {
 			log.Printf("Exiting the loop. Order status: %s", orderUpdate.Status)
+			time.Sleep(1 * time.Second)
 			break
 		}
 	}
 	return orderUpdate
 }
 
+// Sync function for synchronizing orders.
+// The function periodically checks the status of orders and updates them in the database.
 func (uc *UseCase) Sync() error {
 	ticker := time.NewTicker(tick)
 	ctx := context.Background()
@@ -110,6 +115,8 @@ func (uc *UseCase) Sync() error {
 	return nil
 }
 
+// UpdateStatus function to update the order status and user balance in the database.
+// The function accepts an OrderResponse structure with updated order data and user login.
 func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string) error {
 
 	orderModel := &entity.Orders{}

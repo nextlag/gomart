@@ -1,3 +1,4 @@
+// Package logger - middleware logger
 package logger
 
 import (
@@ -27,7 +28,7 @@ type RequestFields struct {
 	Compress    string `json:"compress"`
 }
 
-// New создает и возвращает новый middleware для логирования HTTP запросов.
+// New - creates and returns a new middleware for logging HTTP requests.
 func New(log usecase.Logger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +68,7 @@ func New(log usecase.Logger) func(next http.Handler) http.Handler {
 	}
 }
 
-// SetupLogger - инициализация middleware для логирования HTTP-запросов
+// SetupLogger - initialization of middleware for logging HTTP requests
 func SetupLogger() usecase.Logger {
 	opts := slogpretty.PrettyHandlerOptions{
 		SlogOpts: &slog.HandlerOptions{
@@ -79,12 +80,3 @@ func SetupLogger() usecase.Logger {
 
 	return slog.New(handler)
 }
-
-// func SetupLogger() *slog.Logger {
-// 	var log *slog.Logger
-// 	log = slog.New(
-// 		// slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-// 		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-// 	)
-// 	return log
-// }

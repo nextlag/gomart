@@ -1,3 +1,4 @@
+// Package auth - middleware authentication
 package auth
 
 import (
@@ -8,17 +9,17 @@ import (
 	"github.com/nextlag/gomart/internal/usecase"
 )
 
-// authContextKey - тип для ключа контекста аутентификации
+// authContextKey - type for the authentication context key
 type authContextKey string
 
-// LoginKey - ключ для контекста с логином пользователя
+// LoginKey - key for the context with the user login
 const LoginKey authContextKey = "login"
 
-// CookieAuthentication - проверяет, авторизован ли пользователь с использованием cookie.
-// Если URL-путь не "/api/user/register" или не "/api/user/login" и у пользователя есть действительная кука авторизации,
-// она обслуживает запросы и вставляет логин в контекст.
-// В противном случае она не позволяет продолжить выполнение и возвращает статус кода 401 (если пользователь не аутентифицирован),
-// или 500 (если произошла внутренняя ошибка сервера).
+// CookieAuthentication - checks whether the user is authorized using a cookie.
+// If the URL path is not "/api/user/register" or not "/api/user/login" and the user has a valid authorization cookie,
+// it serves requests and inserts the login into the context.
+// Otherwise, it does not allow execution to continue and returns a 401 status code (if the user is not authenticated)
+// or 500 (if an internal server error occurred).
 func CookieAuthentication(log usecase.Logger, er *usecase.ErrAll) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

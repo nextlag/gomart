@@ -45,9 +45,14 @@ func New(r Repository, l Logger, cfg config.HTTPServer) *UseCase {
 	e := &entity.AllEntity{}
 	return &UseCase{repo: r, log: l, cfg: cfg, entity: e}
 }
+
+// GetEntity - method returning entity structures
 func (uc *UseCase) GetEntity() *entity.AllEntity {
 	return uc.entity
 }
+
+// UseCase interface methods
+
 func (uc *UseCase) Do() *UseCase {
 	return uc
 }
