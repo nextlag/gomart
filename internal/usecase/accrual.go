@@ -52,7 +52,6 @@ func GetAccrual(order entity.Orders, stop chan struct{}) OrderResponse {
 				time.Sleep(1 * time.Second)
 			case 500:
 				log.Printf("internal server error in accrual system: %v", err)
-				break
 			}
 
 			// Проверяем статус обновления заказа
