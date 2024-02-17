@@ -65,13 +65,19 @@ func main() {
 
 	log.Info("server starting", slog.String("host", srv.Addr))
 
+	// Создание канала для получения сигналов операционной системы
 	sigs := make(chan os.Signal, 1)
+	// Уведомление канала о сигналах прерывания (Ctrl+C) и завершения работы
 	signal.Notify(sigs, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
+	// Создание канала для остановки операций
 	stop := make(chan struct{})
+	// Отложенное закрытие канала stop при выходе из функции main
 	defer close(stop)
 
+	// Запуск функции db.Sync() в горутине для синхронизации с базой данных
 	go func() {
+		// Выполнение синхронизации с базой данных с передачей канала остановки
 		if err := db.Sync(stop); err != nil {
 			log.Error("error in db.Sync()", "error", err.Error())
 		}
@@ -79,8 +85,11 @@ func main() {
 
 	// Запуск HTTP-сервера в горутине
 	go func() {
+		// Закрытие канала stop при завершении работы функции
 		defer close(stop)
+		// Запуск HTTP-сервера и обработка ошибок
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			// В случае ошибки при запуске сервера, запись ошибки в лог и отправка сигнала прерывания
 			log.Error("failed to start server", "error main", err.Error())
 			sigs <- os.Interrupt
 			return
@@ -88,6 +97,7 @@ func main() {
 	}()
 
 	log.Info("server started")
+	// Ожидание получения сигнала завершения работы сервера
 	<-sigs
 	log.Info("server stopped")
 

@@ -26,6 +26,8 @@ type OrderResponse struct {
 func GetAccrual(order entity.Orders, stop chan struct{}) OrderResponse {
 	client := resty.New().SetBaseURL(config.Cfg.Accrual)
 	var orderUpdate OrderResponse
+
+	// Выполняем цикл, пока не получим сигнал остановки из канала stop
 	for {
 		select {
 		case <-stop:
@@ -48,20 +50,18 @@ func GetAccrual(order entity.Orders, stop chan struct{}) OrderResponse {
 			case 204:
 				log.Println("204 status code. Sleeping for 1 second.")
 				time.Sleep(1 * time.Second)
-			}
-
-			if resp.StatusCode() == 500 {
+			case 500:
 				log.Printf("internal server error in accrual system: %v", err)
 				break
 			}
 
+			// Проверяем статус обновления заказа
 			if orderUpdate.Status == "INVALID" || orderUpdate.Status == "PROCESSED" {
 				log.Printf("Exiting the loop. Order status: %s", orderUpdate.Status)
 				time.Sleep(1 * time.Second)
-				break
+				return orderUpdate
 			}
 		}
-		return orderUpdate
 	}
 }
 
