@@ -23,46 +23,51 @@ type OrderResponse struct {
 
 // GetAccrual is a function that sends an HTTP request and returns an OrderResponse structure.
 // The function receives order data from the accrual system.
-func GetAccrual(order entity.Orders) OrderResponse {
+func GetAccrual(order entity.Orders, stop chan struct{}) OrderResponse {
 	client := resty.New().SetBaseURL(config.Cfg.Accrual)
 	var orderUpdate OrderResponse
 	for {
-		resp, err := client.R().
-			SetResult(&orderUpdate).
-			Get("/api/orders/" + order.Order)
+		select {
+		case <-stop:
+			return orderUpdate // Возвращаем последнее полученное значение
+		default:
+			resp, err := client.R().
+				SetResult(&orderUpdate).
+				Get("/api/orders/" + order.Order)
 
-		if err != nil {
-			log.Printf("got error trying to send a get request to accrual: %v", err)
-			break
-		}
-		log.Printf("response body: %s", resp.String())
+			if err != nil {
+				log.Printf("got error trying to send a get request to accrual: %v", err)
+				break
+			}
+			log.Printf("response body: %s", resp.String())
 
-		switch resp.StatusCode() {
-		case 429:
-			log.Println("429 status code. Sleeping for 3 seconds.")
-			time.Sleep(3 * time.Second)
-		case 204:
-			log.Println("204 status code. Sleeping for 1 second.")
-			time.Sleep(1 * time.Second)
-		}
+			switch resp.StatusCode() {
+			case 429:
+				log.Println("429 status code. Sleeping for 3 seconds.")
+				time.Sleep(3 * time.Second)
+			case 204:
+				log.Println("204 status code. Sleeping for 1 second.")
+				time.Sleep(1 * time.Second)
+			}
 
-		if resp.StatusCode() == 500 {
-			log.Printf("internal server error in accrual system: %v", err)
-			break
-		}
+			if resp.StatusCode() == 500 {
+				log.Printf("internal server error in accrual system: %v", err)
+				break
+			}
 
-		if orderUpdate.Status == "INVALID" || orderUpdate.Status == "PROCESSED" {
-			log.Printf("Exiting the loop. Order status: %s", orderUpdate.Status)
-			time.Sleep(1 * time.Second)
-			break
+			if orderUpdate.Status == "INVALID" || orderUpdate.Status == "PROCESSED" {
+				log.Printf("Exiting the loop. Order status: %s", orderUpdate.Status)
+				time.Sleep(1 * time.Second)
+				break
+			}
 		}
+		return orderUpdate
 	}
-	return orderUpdate
 }
 
 // Sync function for synchronizing orders.
 // The function periodically checks the status of orders and updates them in the database.
-func (uc *UseCase) Sync() error {
+func (uc *UseCase) Sync(stop chan struct{}) error {
 	ticker := time.NewTicker(tick)
 	ctx := context.Background()
 
@@ -104,7 +109,7 @@ func (uc *UseCase) Sync() error {
 
 		for _, unfinishedOrder := range allOrders {
 			log.Print("unfinished", unfinishedOrder)
-			finishedOrder := GetAccrual(unfinishedOrder)
+			finishedOrder := GetAccrual(unfinishedOrder, stop)
 			log.Print("finished", finishedOrder)
 			err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.Users)
 			if err != nil {

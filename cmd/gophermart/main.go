@@ -65,33 +65,30 @@ func main() {
 
 	log.Info("server starting", slog.String("host", srv.Addr))
 
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	// Канал для сигнализации о завершении сервера HTTP
-	srvDone := make(chan struct{})
+	stop := make(chan struct{})
+	defer close(stop)
+
+	go func() {
+		if err := db.Sync(stop); err != nil {
+			log.Error("error in db.Sync()", "error", err.Error())
+		}
+	}()
 
 	// Запуск HTTP-сервера в горутине
 	go func() {
-		defer close(srvDone)
+		defer close(stop)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("failed to start server", "error main", err.Error())
-			done <- os.Interrupt
+			sigs <- os.Interrupt
 			return
 		}
 	}()
 
 	log.Info("server started")
-
-	go func() {
-		defer func() {
-			srvDone <- struct{}{}
-		}()
-		if err := db.Sync(); err != nil {
-			log.Error("error in db.Sync()", "error", err.Error())
-		}
-	}()
-
-	<-done
+	<-sigs
 	log.Info("server stopped")
+
 }
