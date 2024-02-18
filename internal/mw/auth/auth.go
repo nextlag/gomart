@@ -14,13 +14,13 @@ const (
 	Cookie = "ErrAuth"
 )
 
-// Claims представляет структуру пользовательских клеймов для JWT.
+// Claims introduces a custom claims framework for JWT.
 type Claims struct {
 	jwt.RegisteredClaims
 	Login string `json:"login"`
 }
 
-// buildJWTString генерирует токен JWT с предоставленным логином и подписывает его с использованием настроенного секретного ключа.
+// buildJWTString generates a JWT token with the provided login and signs it using the configured secret key.
 func buildJWTString(login string, log usecase.Logger) (string, error) {
 	// Создает новый токен JWT с пользовательскими клеймами и подписывает его с использованием алгоритма HMAC SHA-256.
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
@@ -39,7 +39,7 @@ func buildJWTString(login string, log usecase.Logger) (string, error) {
 	return tokenString, nil
 }
 
-// SetAuth создает новую куку для предоставленного логина и устанавливает ее в HTTP-ответе.
+// SetAuth creates a new cookie for the provided login and sets it in the HTTP response.
 func SetAuth(login string, log usecase.Logger, w http.ResponseWriter) (string, error) {
 	// Сгенерировать токен JWT для логина.
 	jwtToken, err := buildJWTString(login, log)
@@ -85,7 +85,7 @@ func getLogin(tokenString string, log usecase.Logger) (string, error) {
 	return claims.Login, nil
 }
 
-// GetCookie извлекает логин пользователя из кука "ErrAuth".
+// GetCookie retrieves the user's login from the "ErrAuth" cookie.
 func GetCookie(log usecase.Logger, r *http.Request) (string, error) {
 	// Извлечь подписанную куку логина из запроса.
 	signedLogin, err := r.Cookie(Cookie)
