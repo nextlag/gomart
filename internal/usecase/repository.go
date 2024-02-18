@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -166,7 +167,7 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 		Where("login = ?", login).
 		Scan(ctx)
 	if err != nil {
-		uc.log.Error("error finding user's balance", err.Error())
+		fmt.Printf("error finding user's balance: %v", err)
 		return 0, 0, err
 	}
 

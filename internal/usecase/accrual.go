@@ -3,6 +3,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -23,7 +24,7 @@ type OrderResponse struct {
 
 // GetAccrual is a function that sends an HTTP request and returns an OrderResponse structure.
 // The function receives order data from the accrual system.
-func GetAccrual(order entity.Orders, stop chan struct{}) OrderResponse {
+func GetAccrual(order entity.Orders, stop chan struct{}) (OrderResponse, error) {
 	client := resty.New().SetBaseURL(config.Cfg.Accrual)
 	var orderUpdate OrderResponse
 
@@ -31,7 +32,7 @@ func GetAccrual(order entity.Orders, stop chan struct{}) OrderResponse {
 	for {
 		select {
 		case <-stop:
-			return orderUpdate // Возвращаем последнее полученное значение
+			return orderUpdate, nil
 		default:
 			resp, err := client.R().
 				SetResult(&orderUpdate).
@@ -39,11 +40,23 @@ func GetAccrual(order entity.Orders, stop chan struct{}) OrderResponse {
 
 			if err != nil {
 				log.Printf("got error trying to send a get request to accrual: %v", err)
-				break
+				return orderUpdate, err
 			}
 			log.Printf("response body: %s", resp.String())
 
 			switch resp.StatusCode() {
+			case 200:
+				switch orderUpdate.Status {
+				case "INVALID", "PROCESSED":
+					log.Printf("Exiting the loop. Order status: %s", orderUpdate.Status)
+					return orderUpdate, nil
+				case "PROCESSING":
+					log.Printf("Order status is PROCESSING. Sleeping for 1 second before the next request.")
+					time.Sleep(1 * time.Second)
+				default:
+					log.Printf("Unknown order status: %s. Sleeping for 1 second before the next request.", orderUpdate.Status)
+					time.Sleep(1 * time.Second)
+				}
 			case 429:
 				log.Println("429 status code. Sleeping for 3 seconds.")
 				time.Sleep(3 * time.Second)
@@ -52,13 +65,9 @@ func GetAccrual(order entity.Orders, stop chan struct{}) OrderResponse {
 				time.Sleep(1 * time.Second)
 			case 500:
 				log.Printf("internal server error in accrual system: %v", err)
-			}
-
-			// Проверяем статус обновления заказа
-			if orderUpdate.Status == "INVALID" || orderUpdate.Status == "PROCESSED" {
-				log.Printf("Exiting the loop. Order status: %s", orderUpdate.Status)
+			default:
+				log.Printf("Unexpected status code: %d. Sleeping for 1 second before the next request.", resp.StatusCode())
 				time.Sleep(1 * time.Second)
-				return orderUpdate
 			}
 		}
 	}
@@ -71,11 +80,8 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 	ctx := context.Background()
 
 	for range ticker.C {
-
 		var allOrders []entity.Orders
-
 		order := &entity.Orders{}
-
 		db := bun.NewDB(uc.DB, pgdialect.New())
 
 		rows, err := db.NewSelect().
@@ -107,8 +113,10 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 		}
 
 		for _, unfinishedOrder := range allOrders {
-			log.Print("unfinished", unfinishedOrder)
-			finishedOrder := GetAccrual(unfinishedOrder, stop)
+			finishedOrder, err := GetAccrual(unfinishedOrder, stop)
+			if err != nil {
+				return err
+			}
 			log.Print("finished", finishedOrder)
 			err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.Users)
 			if err != nil {
@@ -143,8 +151,7 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 		Where(`login = ?`, login).
 		Exec(ctx)
 	if err != nil {
-		uc.log.Error("error making an update request in user table", err)
-		return err
+		return fmt.Errorf("error making an update request in user table: %v\n", err)
 	}
 	return nil
 }

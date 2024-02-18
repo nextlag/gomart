@@ -35,7 +35,6 @@ type Repository interface {
 
 type UseCase struct {
 	repo   Repository // interface Repository
-	log    Logger     // interface Logger
 	cfg    config.HTTPServer
 	entity *entity.AllEntity // struct entity
 	DB     *sql.DB
@@ -43,7 +42,7 @@ type UseCase struct {
 
 func New(r Repository, l Logger, cfg config.HTTPServer) *UseCase {
 	e := &entity.AllEntity{}
-	return &UseCase{repo: r, log: l, cfg: cfg, entity: e}
+	return &UseCase{repo: r, cfg: cfg, entity: e}
 }
 
 // GetEntity - method returning entity structures
