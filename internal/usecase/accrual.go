@@ -151,7 +151,7 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 		Where(`login = ?`, login).
 		Exec(ctx)
 	if err != nil {
-		return fmt.Errorf("error making an update request in user table: %v\n", err)
+		return fmt.Errorf("error making an update request in user table: %v", err)
 	}
 	return nil
 }
