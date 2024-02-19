@@ -56,6 +56,7 @@ func (c *Controller) Register(w http.ResponseWriter, r *http.Request) {
 			// Если дубликат логина - возвращаем конфликт
 			http.Error(w, er.ErrNoLogin.Error(), http.StatusConflict)
 		default:
+			c.log.Error("Register error", "error", err.Error())
 			// В противном случае возвращаем внутреннюю ошибку сервера
 			http.Error(w, er.ErrInternalServer.Error(), http.StatusInternalServerError)
 		}

@@ -4,7 +4,7 @@ Host: localhost:8080
 Content-Type: application/json
 
 {
-  "login": "solo5",
+  "login": "solo31",
   "password": "12345"
 }
 

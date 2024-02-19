@@ -24,22 +24,42 @@ type Withdrawals struct {
 	Time  time.Time `json:"processed_at"`
 }
 
-// Register registers a new user with the provided login and password.
+// Register регистрирует нового пользователя с предоставленным логином и паролем.
+// Метод начинает транзакцию с базой данных, создает нового пользователя с указанными
+// данными и вставляет его в базу данных. После успешной вставки, транзакция фиксируется,
+// а если происходит ошибка, транзакция откатывается.
+//
+// Параметры:
+//   - ctx: контекст выполнения запроса.
+//   - login: логин нового пользователя.
+//   - password: пароль нового пользователя.
+//
+// Возвращаемое значение:
+//   - error: если произошла ошибка во время выполнения запроса или транзакции,
+//     возвращается ошибка, в противном случае nil.
 func (uc *UseCase) Register(ctx context.Context, login string, password string) error {
 	user := &entity.User{
 		Login:    login,
 		Password: password,
 	}
+	tx, err := uc.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning transaction: %v", err)
+	}
+	defer tx.Rollback() // Откатить транзакцию в случае ошибки
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
-	_, err := db.NewInsert().
+	_, err = db.NewInsert().
 		Model(user).
 		Exec(ctx)
 
 	if err != nil {
 		return err
 	}
-
+	// Завершить транзакцию
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("error committing transaction: %v", err)
+	}
 	return nil
 }
 
