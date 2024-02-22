@@ -3,6 +3,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -15,16 +16,25 @@ import (
 	"github.com/nextlag/gomart/internal/entity"
 )
 
-// OrderResponse structure is designed to receive data from the accrual system
+// OrderResponse - структура предназначена для получения данных из системы начисления бонусов.
 type OrderResponse struct {
-	Order   string  `json:"order"`
-	Status  string  `json:"status"`
-	Accrual float32 `json:"accrual"`
+	Order   string  `json:"order"`   // Номер заказа
+	Status  string  `json:"status"`  // Статус заказа
+	Accrual float32 `json:"accrual"` // Сумма начисления бонусов
 }
 
-// GetAccrual is a function that sends an HTTP request and returns an OrderResponse structure.
-// The function receives order data from the accrual system.
-func GetAccrual(order entity.Orders, stop chan struct{}) (OrderResponse, error) {
+// GetAccrual - функция отправляет HTTP-запрос и возвращает структуру OrderResponse.
+// Функция получает данные заказа из системы начисления.
+// Функция принимает данные заказа order типа entity.Order и канал stop для получения сигнала об остановке выполнения запроса.
+// Возвращает структуру OrderResponse с данными о статусе заказа и ошибку.
+// Функция выполняет цикл запросов к системе начисления бонусов до получения сигнала об остановке или изменения статуса заказа на "INVALID" или "PROCESSED".
+// В случае получения сигнала об остановке, функция завершает выполнение и возвращает пустую структуру OrderResponse и nil.
+// Если при выполнении запроса произошла ошибка, функция возвращает эту ошибку.
+// При получении статуса "PROCESSING" функция ожидает 1 секунду и повторяет запрос.
+// При получении статуса "429" (слишком много запросов) функция завершает выполнение и возвращает пустую структуру OrderResponse и ошибку.
+// При получении статуса "204" (нет содержимого) функция завершает выполнение и возвращает пустую структуру OrderResponse и ошибку.
+// При получении статуса "500" (внутренняя ошибка сервера начисления бонусов) функция завершает выполнение и возвращает пустую структуру OrderResponse и ошибку.
+func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
 	client := resty.New().SetBaseURL(config.Cfg.Accrual)
 	var orderUpdate OrderResponse
 
@@ -58,13 +68,12 @@ func GetAccrual(order entity.Orders, stop chan struct{}) (OrderResponse, error) 
 					time.Sleep(1 * time.Second)
 				}
 			case 429:
-				log.Println("429 status code. Sleeping for 3 seconds.")
-				time.Sleep(3 * time.Second)
+				return orderUpdate, errors.New("request limit exceeded")
 			case 204:
-				log.Println("204 status code. Sleeping for 1 second.")
-				time.Sleep(1 * time.Second)
+				return orderUpdate, errors.New("order isn't registered")
 			case 500:
 				log.Printf("internal server error in accrual system: %v", err)
+				return orderUpdate, fmt.Errorf("internal server error in accrual system: %v", err)
 			default:
 				log.Printf("Unexpected status code: %d. Sleeping for 1 second before the next request.", resp.StatusCode())
 				time.Sleep(1 * time.Second)
@@ -80,8 +89,8 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 	ctx := context.Background()
 
 	for range ticker.C {
-		var allOrders []entity.Orders
-		order := &entity.Orders{}
+		var allOrders []entity.Order
+		order := &entity.Order{}
 		db := bun.NewDB(uc.DB, pgdialect.New())
 
 		rows, err := db.NewSelect().
@@ -94,12 +103,12 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 		}
 
 		for rows.Next() {
-			var orderRow entity.Orders
+			var orderRow entity.Order
 			err = rows.Scan(&orderRow.Users, &orderRow.Order, &orderRow.Status, &orderRow.Accrual, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn)
 			if err != nil {
 				return err
 			}
-			allOrders = append(allOrders, entity.Orders{
+			allOrders = append(allOrders, entity.Order{
 				Users:      orderRow.Users,
 				Order:      orderRow.Order,
 				Status:     orderRow.Status,
@@ -131,7 +140,7 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 // The function accepts an OrderResponse structure with updated order data and user login.
 func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string) error {
 
-	orderModel := &entity.Orders{}
+	orderModel := &entity.Order{}
 	userModel := &entity.User{}
 
 	db := bun.NewDB(uc.DB, pgdialect.New())

@@ -115,7 +115,7 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 	bonusesWithdrawn := float32(0)
 
 	// Создаем объект заказа.
-	userOrder := &entity.Orders{
+	userOrder := &entity.Order{
 		Users:            user,
 		Order:            order,
 		Status:           "NEW",
@@ -140,7 +140,7 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
 	// Проверяем существует ли уже заказ с таким же описанием.
-	var checkOrder entity.Orders
+	var checkOrder entity.Order
 	err = db.NewSelect().
 		Model(&checkOrder).
 		Where(`"order" = ?`, order).
@@ -186,8 +186,8 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 // Если произошла ошибка при выполнении запроса к базе данных или при преобразовании результатов в JSON, метод возвращает ошибку.
 func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 	var (
-		allOrders []entity.Orders
-		userOrder entity.Orders
+		allOrders []entity.Order
+		userOrder entity.Order
 	)
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
@@ -207,13 +207,13 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var en entity.Orders
+		var en entity.Order
 		err = rows.Scan(&en.Users, &en.Order, &en.Status, &en.Accrual, &en.UploadedAt, &en.BonusesWithdrawn)
 		if err != nil {
 			return nil, err
 		}
 
-		allOrders = append(allOrders, entity.Orders{
+		allOrders = append(allOrders, entity.Order{
 			Order:      en.Order,
 			Status:     en.Status,
 			Accrual:    en.Accrual,
@@ -301,7 +301,7 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
 	// Проверка существования заказа в базе данных
-	checkOrder := entity.Orders{}
+	checkOrder := entity.Order{}
 	now := time.Now()
 
 	err = db.NewSelect().
@@ -311,7 +311,7 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 	if !errors.Is(err, nil) {
 		// Заказ не существует, добавляем новый заказ в базу данных
 		_, err := db.NewInsert().
-			Model(&entity.Orders{
+			Model(&entity.Order{
 				Users:            user,
 				Order:            order,
 				UploadedAt:       now,
@@ -361,7 +361,7 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, error) {
 	var (
 		allOrders []Withdrawals
-		userOrder entity.Orders
+		userOrder entity.Order
 	)
 
 	// Инициализация подключения к базе данных
@@ -381,7 +381,7 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 	noRows := true
 	for rows.Next() {
 		noRows = false
-		var orderRow entity.Orders
+		var orderRow entity.Order
 		if err = rows.Scan(
 			&orderRow.Users,
 			&orderRow.Order,

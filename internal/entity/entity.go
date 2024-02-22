@@ -12,7 +12,7 @@ type User struct {
 }
 
 // Order structure intended for inserting data into the orders table.
-type Orders struct {
+type Order struct {
 	Users            string    `json:"users,omitempty"`
 	Order            string    `json:"number"`
 	Status           string    `json:"status"`
@@ -23,5 +23,5 @@ type Orders struct {
 
 type AllEntity struct {
 	*User
-	*Orders
+	*Order
 }
