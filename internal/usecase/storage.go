@@ -14,7 +14,7 @@ const (
 		withdrawn FLOAT
 	);`
 	ordersTable = `CREATE TABLE IF NOT EXISTS orders (
-		"user" VARCHAR(255),
+		"user_name" VARCHAR(255),
 		"order" VARCHAR(255) PRIMARY KEY,
 		status VARCHAR(255),
 		accrual FLOAT,

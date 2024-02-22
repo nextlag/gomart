@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -116,7 +117,7 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 
 	// Создаем объект заказа.
 	userOrder := &entity.Order{
-		User:             user,
+		UserName:         user,
 		Order:            order,
 		Status:           "NEW",
 		UploadedAt:       now,
@@ -147,7 +148,7 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 		Scan(ctx)
 	if errors.Is(err, nil) {
 		// Если заказ существует, проверяем его принадлежность пользователю.
-		if checkOrder.User == user {
+		if checkOrder.UserName == user {
 			// Заказ принадлежит текущему пользователю.
 			return uc.Err().ErrThisUser
 		}
@@ -187,17 +188,17 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 	var (
 		allOrders []entity.Order
-		userOrder entity.Order
+		order     entity.Order
 	)
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
 	rows, err := db.NewSelect().
-		Model(&userOrder).
-		Where("user = ?", user).
+		Model(&order).
+		Where("user_name = ?", user).
 		Order("uploaded_at ASC").
 		Rows(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ошибка запроса: %v", err)
 	}
 
 	err = rows.Err()
@@ -208,11 +209,10 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 
 	for rows.Next() {
 		var en entity.Order
-		err = rows.Scan(&en.User, &en.Order, &en.Status, &en.Accrual, &en.UploadedAt, &en.BonusesWithdrawn)
+		err = rows.Scan(&en.UserName, &en.Order, &en.Status, &en.Accrual, &en.UploadedAt, &en.BonusesWithdrawn)
 		if err != nil {
 			return nil, err
 		}
-
 		allOrders = append(allOrders, entity.Order{
 			Order:      en.Order,
 			Status:     en.Status,
@@ -225,6 +225,8 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	log.Print(string(result))
 	return result, nil
 }
 
@@ -312,7 +314,7 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 		// Заказ не существует, добавляем новый заказ в базу данных
 		_, err := db.NewInsert().
 			Model(&entity.Order{
-				User:             user,
+				UserName:         user,
 				Order:            order,
 				UploadedAt:       now,
 				Status:           "NEW",
@@ -326,10 +328,10 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 	}
 
 	// Проверка принадлежности заказа текущему пользователю или другому
-	if checkOrder.User != user && checkOrder.Order == order {
+	if checkOrder.UserName != user && checkOrder.Order == order {
 		// Если заказ существует и принадлежит другому пользователю, возвращает ErrAnotherUser.
 		return uc.Err().ErrAnotherUser
-	} else if checkOrder.User == user && checkOrder.Order == order {
+	} else if checkOrder.UserName == user && checkOrder.Order == order {
 		// Если заказ существует и принадлежит текущему пользователю, возвращает ErrThisUser.
 		return uc.Err().ErrThisUser
 	}
@@ -361,7 +363,7 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, error) {
 	var (
 		allOrders []Withdrawals
-		userOrder entity.Order
+		order     entity.Order
 	)
 
 	// Инициализация подключения к базе данных
@@ -369,8 +371,8 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 
 	// Выборка всех заказов пользователя, где bonuses_withdrawn != 0
 	rows, err := db.NewSelect().
-		Model(&userOrder).
-		Where("user = ? and bonuses_withdrawn != 0", user).
+		Model(&order).
+		Where("user_name = ? and bonuses_withdrawn != 0", user).
 		Order("uploaded_at ASC").
 		Rows(ctx)
 	rows.Err()
@@ -383,7 +385,7 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 		noRows = false
 		var orderRow entity.Order
 		if err = rows.Scan(
-			&orderRow.User,
+			&orderRow.UserName,
 			&orderRow.Order,
 			&orderRow.Status,
 			&orderRow.Accrual,

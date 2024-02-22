@@ -69,13 +69,13 @@ func main() {
 	stop := make(chan struct{})
 	defer close(stop)
 
-	go func() {
-		if err := db.Sync(stop); err != nil {
-			log.Error("db.Sync()", "error", err.Error())
-			sigs <- os.Interrupt
-			return
-		}
-	}()
+	// go func() {
+	// 	if err := db.Sync(stop); err != nil {
+	// 		log.Error("db.Sync()", "error", err.Error())
+	// 		sigs <- os.Interrupt
+	// 		return
+	// 	}
+	// }()
 
 	go func() {
 		// Закрытие канала stop при завершении работы функции

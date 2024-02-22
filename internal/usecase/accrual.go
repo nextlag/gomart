@@ -119,12 +119,12 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 
 		for rows.Next() {
 			var orderRow entity.Order
-			err = rows.Scan(&orderRow.User, &orderRow.Order, &orderRow.Status, &orderRow.Accrual, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn)
+			err = rows.Scan(&orderRow.UserName, &orderRow.Order, &orderRow.Status, &orderRow.Accrual, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn)
 			if err != nil {
 				return err
 			}
 			allOrders = append(allOrders, entity.Order{
-				User:       orderRow.User,
+				UserName:   orderRow.UserName,
 				Order:      orderRow.Order,
 				Status:     orderRow.Status,
 				Accrual:    orderRow.Accrual,
@@ -142,7 +142,7 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 				return err
 			}
 			log.Print("finished", finishedOrder)
-			err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.User)
+			err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.UserName)
 			if err != nil {
 				return err
 			}

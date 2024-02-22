@@ -13,7 +13,7 @@ type User struct {
 
 // Order structure intended for inserting data into the orders table.
 type Order struct {
-	User             string    `json:"user,omitempty"`
+	UserName         string    `json:"user_name,omitempty"`
 	Order            string    `json:"number"`
 	Status           string    `json:"status"`
 	Accrual          float32   `json:"accrual,omitempty"`

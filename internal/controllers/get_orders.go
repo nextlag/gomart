@@ -13,7 +13,7 @@ func (c *Controller) GetOrders(w http.ResponseWriter, r *http.Request) {
 	er := c.uc.Do().Err()
 	result, err := c.uc.DoGetOrders(r.Context(), user)
 	if err != nil {
-		c.log.Info("handler GetOrders", "error", err.Error())
+		c.log.Error("handler GetOrders", "error", err.Error())
 		http.Error(w, er.ErrInternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
