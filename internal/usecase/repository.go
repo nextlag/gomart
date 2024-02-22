@@ -116,7 +116,7 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 
 	// Создаем объект заказа.
 	userOrder := &entity.Order{
-		Users:            user,
+		User:             user,
 		Order:            order,
 		Status:           "NEW",
 		UploadedAt:       now,
@@ -147,7 +147,7 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 		Scan(ctx)
 	if errors.Is(err, nil) {
 		// Если заказ существует, проверяем его принадлежность пользователю.
-		if checkOrder.Users == user {
+		if checkOrder.User == user {
 			// Заказ принадлежит текущему пользователю.
 			return uc.Err().ErrThisUser
 		}
@@ -208,7 +208,7 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 
 	for rows.Next() {
 		var en entity.Order
-		err = rows.Scan(&en.Users, &en.Order, &en.Status, &en.Accrual, &en.UploadedAt, &en.BonusesWithdrawn)
+		err = rows.Scan(&en.User, &en.Order, &en.Status, &en.Accrual, &en.UploadedAt, &en.BonusesWithdrawn)
 		if err != nil {
 			return nil, err
 		}
@@ -312,7 +312,7 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 		// Заказ не существует, добавляем новый заказ в базу данных
 		_, err := db.NewInsert().
 			Model(&entity.Order{
-				Users:            user,
+				User:             user,
 				Order:            order,
 				UploadedAt:       now,
 				Status:           "NEW",
@@ -326,10 +326,10 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 	}
 
 	// Проверка принадлежности заказа текущему пользователю или другому
-	if checkOrder.Users != user && checkOrder.Order == order {
+	if checkOrder.User != user && checkOrder.Order == order {
 		// Если заказ существует и принадлежит другому пользователю, возвращает ErrAnotherUser.
 		return uc.Err().ErrAnotherUser
-	} else if checkOrder.Users == user && checkOrder.Order == order {
+	} else if checkOrder.User == user && checkOrder.Order == order {
 		// Если заказ существует и принадлежит текущему пользователю, возвращает ErrThisUser.
 		return uc.Err().ErrThisUser
 	}
@@ -383,7 +383,7 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 		noRows = false
 		var orderRow entity.Order
 		if err = rows.Scan(
-			&orderRow.Users,
+			&orderRow.User,
 			&orderRow.Order,
 			&orderRow.Status,
 			&orderRow.Accrual,
