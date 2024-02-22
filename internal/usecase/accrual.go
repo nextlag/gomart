@@ -3,7 +3,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -23,17 +22,26 @@ type OrderResponse struct {
 	Accrual float32 `json:"accrual"` // Сумма начисления бонусов
 }
 
-// GetAccrual - функция отправляет HTTP-запрос и возвращает структуру OrderResponse.
-// Функция получает данные заказа из системы начисления.
-// Функция принимает данные заказа order типа entity.Order и канал stop для получения сигнала об остановке выполнения запроса.
-// Возвращает структуру OrderResponse с данными о статусе заказа и ошибку.
-// Функция выполняет цикл запросов к системе начисления бонусов до получения сигнала об остановке или изменения статуса заказа на "INVALID" или "PROCESSED".
-// В случае получения сигнала об остановке, функция завершает выполнение и возвращает пустую структуру OrderResponse и nil.
-// Если при выполнении запроса произошла ошибка, функция возвращает эту ошибку.
-// При получении статуса "PROCESSING" функция ожидает 1 секунду и повторяет запрос.
-// При получении статуса "429" (слишком много запросов) функция завершает выполнение и возвращает пустую структуру OrderResponse и ошибку.
-// При получении статуса "204" (нет содержимого) функция завершает выполнение и возвращает пустую структуру OrderResponse и ошибку.
-// При получении статуса "500" (внутренняя ошибка сервера начисления бонусов) функция завершает выполнение и возвращает пустую структуру OrderResponse и ошибку.
+// GetAccrual выполняет запрос к системе начисления для получения информации о заказе.
+// Функция отправляет HTTP GET запрос к указанному API для получения статуса заказа.
+// Параметры:
+//   - order: структура, содержащая информацию о заказе, включая его номер.
+//   - stop: канал для получения сигнала остановки выполнения функции.
+//
+// Возвращаемые значения:
+//   - OrderResponse: структура, содержащая информацию о статусе заказа, начислении и других данных.
+//   - error: ошибка, возникающая в случае невозможности выполнения запроса или получения данных.
+//
+// Функция выполняет цикл запросов до получения сигнала остановки из канала stop или успешного завершения запроса.
+// При получении статуса 200 функция проверяет статус заказа из ответа. Если заказ
+// имеет статус "INVALID" или "PROCESSED", цикл завершается и возвращается информация о заказе.
+// Если статус заказа "PROCESSING", функция приостанавливает выполнение на 1 секунду перед
+// следующим запросом. При получении статуса 429 (слишком много запросов), функция возвращает
+// ошибку "request limit exceeded". При статусе 204 (заказ не зарегистрирован), возвращается
+// ошибка "order isn't registered". При получении статуса 500 (внутренняя ошибка сервера
+// в системе начислений), возвращается ошибка "internal server error in accrual system".
+// Если выполнение функции завершается по сигналу остановки, она возвращает текущее состояние
+// заказа без ошибки.
 func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
 	client := resty.New().SetBaseURL(config.Cfg.Accrual)
 	var orderUpdate OrderResponse
@@ -52,7 +60,6 @@ func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
 				log.Printf("got error trying to send a get request to accrual: %v", err)
 				return orderUpdate, err
 			}
-			log.Printf("response body: %s", resp.String())
 
 			switch resp.StatusCode() {
 			case 200:
@@ -68,22 +75,30 @@ func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
 					time.Sleep(1 * time.Second)
 				}
 			case 429:
-				return orderUpdate, errors.New("request limit exceeded")
+				return orderUpdate, fmt.Errorf("request limit exceeded: %v", err)
 			case 204:
-				return orderUpdate, errors.New("order isn't registered")
+				return orderUpdate, fmt.Errorf("order isn't registered: %v", err)
 			case 500:
-				log.Printf("internal server error in accrual system: %v", err)
 				return orderUpdate, fmt.Errorf("internal server error in accrual system: %v", err)
-			default:
-				log.Printf("Unexpected status code: %d. Sleeping for 1 second before the next request.", resp.StatusCode())
-				time.Sleep(1 * time.Second)
 			}
 		}
 	}
 }
 
-// Sync function for synchronizing orders.
-// The function periodically checks the status of orders and updates them in the database.
+// Sync выполняет синхронизацию заказов с системой начисления бонусов.
+// Функция периодически запрашивает статусы незавершенных заказов и обновляет их статусы
+// в базе данных в соответствии с полученной информацией.
+// Параметры:
+//   - stop: канал для получения сигнала остановки выполнения функции.
+//
+// Возвращаемое значение:
+//   - error: в случае возникновения ошибки при выполнении синхронизации.
+//
+// Функция создает новый тикер, который запускает процесс синхронизации через определенные интервалы времени.
+// При каждом срабатывании тикера, функция выполняет запрос к базе данных для получения списка незавершенных заказов.
+// Затем она запускает цикл обработки этих заказов, вызывая функцию GetAccrual для каждого заказа
+// и обновляя статусы заказов в базе данных согласно полученной информации. Функция продолжает
+// работу до получения сигнала остановки из канала stop.
 func (uc *UseCase) Sync(stop chan struct{}) error {
 	ticker := time.NewTicker(tick)
 	ctx := context.Background()
@@ -136,8 +151,21 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 	return nil
 }
 
-// UpdateStatus function to update the order status and user balance in the database.
-// The function accepts an OrderResponse structure with updated order data and user login.
+// UpdateStatus обновляет статус заказа и баланс пользователя в базе данных на основе полученных данных о начислении.
+// Функция принимает контекст ctx типа context.Context, структуру OrderResponse с информацией о начислении,
+// и логин пользователя login.
+// Параметры:
+//   - ctx: контекст выполнения запроса.
+//   - orderAccrual: структура OrderResponse с информацией о статусе заказа и начислении.
+//   - login: логин пользователя, чей баланс нужно обновить.
+//
+// Возвращаемое значение:
+//   - error: в случае возникновения ошибки при выполнении запроса к базе данных.
+//
+// Функция выполняет два отдельных запроса к базе данных для обновления статуса заказа и баланса пользователя.
+// Сначала она обновляет статус заказа и начисление в таблице заказов, а затем обновляет баланс пользователя
+// в соответствии с начисленной суммой. Если произошла ошибка при выполнении запросов к базе данных,
+// функция возвращает ошибку.
 func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string) error {
 
 	orderModel := &entity.Order{}
