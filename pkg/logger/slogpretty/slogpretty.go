@@ -1,3 +1,5 @@
+// Package slogpretty предоставляет структурированный логгер с цветным форматированием вывода.
+
 package slogpretty
 
 import (
@@ -15,6 +17,8 @@ import (
 	"github.com/nextlag/gomart/internal/config"
 )
 
+// SetupLogger инициализирует и настраивает логгер с предоставленными параметрами.
+// Возвращает объект slog.Logger для логирования.
 func SetupLogger(projectRoot string) *slog.Logger {
 	opts := PrettyHandlerOptions{
 		SlogOpts: &slog.HandlerOptions{
@@ -27,11 +31,13 @@ func SetupLogger(projectRoot string) *slog.Logger {
 	return slog.New(handler)
 }
 
+// PrettyHandlerOptions содержит опции для создания PrettyHandler.
 type PrettyHandlerOptions struct {
 	SlogOpts    *slog.HandlerOptions
 	ProjectRoot string
 }
 
+// PrettyHandler представляет собой обработчик структурированного логгера с цветным форматированием.
 type PrettyHandler struct {
 	opts PrettyHandlerOptions
 	slog.Handler
@@ -41,16 +47,17 @@ type PrettyHandler struct {
 	Line  int
 }
 
+// NewPrettyHandler создает новый экземпляр PrettyHandler с заданным выводом и корневой директорией проекта.
 func (opts PrettyHandlerOptions) NewPrettyHandler(out io.Writer, projectRoot string) *PrettyHandler {
 	h := &PrettyHandler{
 		Handler: slog.NewJSONHandler(out, opts.SlogOpts),
 		l:       stdLog.New(out, "", 0),
 		opts:    PrettyHandlerOptions{ProjectRoot: projectRoot},
 	}
-
 	return h
 }
 
+// Handle реализует интерфейс slog.Handler. Обрабатывает записи логов, форматирует их и записывает в вывод.
 func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
 	level := r.Level.String() + ":"
 
@@ -69,7 +76,6 @@ func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
 
 	r.Attrs(func(a slog.Attr) bool {
 		fields[a.Key] = a.Value.Any()
-
 		return true
 	})
 
@@ -86,6 +92,7 @@ func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
 			return err
 		}
 	}
+
 	_, file, line, ok := runtime.Caller(3)
 	if !ok {
 		file = "???" // Если информация не доступна
@@ -115,6 +122,7 @@ func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
 	return nil
 }
 
+// WithAttrs добавляет атрибуты к обработчику логгера.
 func (h *PrettyHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return &PrettyHandler{
 		Handler: h.Handler,
@@ -123,6 +131,7 @@ func (h *PrettyHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	}
 }
 
+// WithGroup создает новый обработчик логгера с заданным именем группы.
 func (h *PrettyHandler) WithGroup(name string) slog.Handler {
 	// TODO: implement
 	return &PrettyHandler{

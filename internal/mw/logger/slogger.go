@@ -24,7 +24,19 @@ type RequestFields struct {
 	Compress    string `json:"compress"`
 }
 
-// New - creates and returns a new middleware for logging HTTP requests.
+// New создает middleware для логирования HTTP-запросов.
+//
+// Эта функция принимает логгер как параметр и возвращает middleware для обработки HTTP-запросов.
+// Middleware логирует информацию о каждом HTTP-запросе, включая метод, путь, IP-адрес клиента,
+// заголовок User-Agent, идентификатор запроса, тип контента запроса, статус ответа, количество байтов ответа,
+// продолжительность запроса и используемое сжатие (если применяется).
+// Если статус ответа является ошибкой (>= 500), логируется информация об ошибке.
+//
+// Параметры:
+//   - log: usecase.Logger - логгер для записи информации о запросах и ошибках.
+//
+// Возвращаемые значения:
+//   - func(http.Handler) http.Handler: middleware для логирования HTTP-запросов.
 func New(log usecase.Logger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {

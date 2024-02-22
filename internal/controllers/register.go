@@ -12,23 +12,32 @@ import (
 	"github.com/nextlag/gomart/pkg/generatestring"
 )
 
-// Register - designed to process HTTP POST requests containing user registration data.
-// It accepts data from the client in JSON format, registers a new user, and also sets an
-// authentication cookie after successful registration.
+// Register обрабатывает запрос на регистрацию нового пользователя.
+//
+// Этот метод принимает запрос HTTP POST с JSON-данными, содержащими логин и пароль нового пользователя.
+// При успешной регистрации метод устанавливает аутентификационную куку и возвращает статус OK (200).
+// Если происходит ошибка при декодировании JSON или при обработке запроса, метод возвращает ошибку BadRequest (400)
+// с соответствующим сообщением об ошибке.
+// Если указанный логин уже занят другим пользователем, метод возвращает ошибку Conflict (409).
+// В случае любых других ошибок при регистрации, метод возвращает ошибку InternalServerError (500).
+//
+// Параметры:
+//   - w: http.ResponseWriter - объект для записи HTTP-ответа.
+//   - r: *http.Request - объект HTTP-запроса.
+//
+// Возвращаемые значения:
+//   - нет.
 func (c *Controller) Register(w http.ResponseWriter, r *http.Request) {
+	// Получаем объект пользователя из UseCase
 	user := c.uc.Do().GetEntity()
+	// Получаем объект ошибки из UseCase
 	er := c.uc.Do().Err()
+
 	// Декодируем JSON-данные из тела запроса в структуру Credentials
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	err := decoder.Decode(&user)
-	defer func() {
-		if panicErr := recover(); panicErr != nil {
-			c.log.Error("panic during JSON decoding", "error", panicErr, "body", r.Body)
-			http.Error(w, er.ErrDecodeJSON.Error(), http.StatusBadRequest)
-		}
-	}()
-
+	// Проверяем наличие ошибок при декодировании
 	switch {
 	case err != nil:
 		c.log.Error("failed to process the request", "error", err.Error())

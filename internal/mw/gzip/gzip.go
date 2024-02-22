@@ -6,7 +6,16 @@ import (
 	"strings"
 )
 
-// New - middleware gzip initialization
+// New возвращает middleware для обработки сжатия gzip для HTTP-запросов и ответов.
+//
+// Эта функция создает middleware, которое проверяет поддержку сжатия gzip для HTTP-запросов и ответов.
+// Если поддержка gzip обнаружена в заголовке "Accept-Encoding" запроса, middleware сжимает ответ с использованием gzip.
+// Если контент был отправлен с использованием сжатия gzip в заголовке "Content-Encoding", middleware распаковывает его.
+// Возвращенное middleware оборачивает следующий обработчик HTTP и модифицирует rest.ResponseWriter и входящий запрос,
+// чтобы поддерживать сжатие gzip.
+//
+// Возвращаемые значения:
+//   - func(http.Handler) http.Handler: middleware для обработки сжатия gzip для HTTP-запросов и ответов.
 func New() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +51,7 @@ func New() func(next http.Handler) http.Handler {
 				defer cr.Close() // Отложенное закрытие gzip.Reader после завершения обработки.
 			}
 
-			// Вызываем оригинальный обработчик (h) с модифицированным rest.ResponseWriter (ow) и исходным запросом (r).
+			// Вызываем оригинальный обработчик (next) с модифицированным rest.ResponseWriter (ow) и исходным запросом (r).
 			next.ServeHTTP(ow, r)
 		}
 		return http.HandlerFunc(fn)

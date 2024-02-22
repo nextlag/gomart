@@ -31,7 +31,7 @@ func main() {
 	}
 
 	var (
-		log = slogpretty.SetupLogger(config.ProjectRoot)
+		log = slogpretty.SetupLogger(config.Cfg.ProjectRoot)
 		cfg = config.Cfg
 	)
 
@@ -41,6 +41,7 @@ func main() {
 		slog.String("-k", cfg.SecretToken),
 		slog.String("-l", cfg.LogLevel.String()),
 		slog.String("-r", cfg.Accrual),
+		slog.String("-p", cfg.ProjectRoot),
 	)
 
 	// init repository
@@ -70,7 +71,7 @@ func main() {
 	defer close(stop)
 
 	go func() {
-		if err := db.Sync(stop); err != nil {
+		if err = db.Sync(stop); err != nil {
 			log.Error("db.Sync()", "error", err.Error())
 			sigs <- os.Interrupt
 			return
@@ -80,7 +81,7 @@ func main() {
 	go func() {
 		// Закрытие канала stop при завершении работы функции
 		defer close(stop)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err = srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("failed to start server", "error", err.Error())
 			sigs <- os.Interrupt
 			return
