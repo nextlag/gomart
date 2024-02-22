@@ -295,7 +295,7 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 	if err != nil {
 		return fmt.Errorf("error beginning transaction Debit method: %v", err)
 	}
-	tx.Rollback()
+	defer tx.Rollback()
 
 	// Инициализация подключения к базе данных
 	db := bun.NewDB(uc.DB, pgdialect.New())
@@ -378,7 +378,6 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 	if err != nil {
 		return nil, err
 	}
-
 	noRows := true
 	for rows.Next() {
 		noRows = false
