@@ -2,12 +2,13 @@
 package logger
 
 import (
+	"context"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/nextlag/gomart/internal/usecase"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 // RequestFields содержит поля запроса для логгера.
@@ -37,9 +38,10 @@ type RequestFields struct {
 //
 // Возвращаемые значения:
 //   - func(http.Handler) http.Handler: middleware для логирования HTTP-запросов.
-func New(log usecase.Logger) func(next http.Handler) http.Handler {
+func New(ctx context.Context) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
+			log := l.L(ctx)
 			// Создаем логгер запроса
 			requestFields := RequestFields{
 				Method:      r.Method,

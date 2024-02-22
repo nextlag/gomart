@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/nextlag/gomart/internal/usecase"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 // authContextKey - ключ контекста аутентификации
@@ -30,11 +31,12 @@ const LoginKey authContextKey = "login"
 //
 // Возвращаемые значения:
 //   - func(http.Handler) http.Handler: middleware для аутентификации пользователя.
-func CookieAuthentication(log usecase.Logger, er *usecase.ErrAll) func(next http.Handler) http.Handler {
+func CookieAuthentication(ctx context.Context, er *usecase.ErrAll) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log := l.L(ctx)
 			// Получаем логин пользователя из аутентификационной куки
-			login, err := GetCookie(log, r)
+			login, err := GetCookie(ctx, r)
 
 			switch {
 			case errors.Is(err, er.ErrToken):
@@ -42,15 +44,15 @@ func CookieAuthentication(log usecase.Logger, er *usecase.ErrAll) func(next http
 				http.Error(w, er.ErrToken.Error(), http.StatusUnauthorized)
 			case errors.Is(err, er.ErrAuth):
 				// Если кука не содержит аутентификационные данные, логируем ошибку и возвращаем ошибку Unauthorized (401)
-				log.Error("error empty login", "error CookieAuthentication", err.Error())
+				log.Error("error empty login", l.ErrAttr(err))
 				http.Error(w, er.ErrAuth.Error(), http.StatusUnauthorized)
 			case err != nil:
 				// Если происходит любая другая ошибка при получении куки, логируем ошибку и возвращаем ошибку Unauthorized (401)
-				log.Error("error getting cookie", "error CookieAuthentication", err.Error())
+				log.Error("error getting cookie", l.ErrAttr(err))
 				http.Error(w, er.ErrInternalServer.Error(), http.StatusUnauthorized)
 			default:
 				// Создаем новый контекст с установленным логином пользователя
-				ctx := context.WithValue(r.Context(), LoginKey, login)
+				ctx = context.WithValue(ctx, LoginKey, login)
 				// Обновляем запрос с новым контекстом
 				r = r.WithContext(ctx)
 				log.Debug("CookieAuthentication", "context", ctx.Value(LoginKey), "login", login)
