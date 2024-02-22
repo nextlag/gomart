@@ -33,7 +33,7 @@ func (c *Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
 	// Получаем объект ошибки из UseCase
 	er := c.uc.Do().Err()
 	// Получаем логин пользователя из контекста запроса
-	user, _ := c.ctx.Value(auth.LoginKey).(string)
+	user, _ := r.Context().Value(auth.LoginKey).(string)
 
 	// Читаем тело запроса
 	body, err := io.ReadAll(r.Body)

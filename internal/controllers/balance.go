@@ -30,7 +30,8 @@ type userBalance struct {
 func (c *Controller) Balance(w http.ResponseWriter, r *http.Request) {
 	log := l.L(c.ctx)
 	// Получаем логин пользователя из контекста запроса
-	login, _ := c.ctx.Value(auth.LoginKey).(string)
+	login, _ := r.Context().Value(auth.LoginKey).(string)
+	log.Info(login)
 	// Получаем текущий баланс и сумму снятых средств пользователя из UseCase
 	balance, withdrawn, err := c.uc.DoGetBalance(c.ctx, login)
 	if err != nil {

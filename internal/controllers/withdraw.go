@@ -34,7 +34,7 @@ func (c *Controller) Withdraw(w http.ResponseWriter, r *http.Request) {
 	// Получаем объект ошибки из UseCase
 	er := c.uc.Do().Err()
 	// Получаем логин пользователя из контекста
-	user, _ := c.ctx.Value(auth.LoginKey).(string)
+	user, _ := r.Context().Value(auth.LoginKey).(string)
 
 	// Декодируем JSON-данные из тела запроса в структуру debit
 	var request debit

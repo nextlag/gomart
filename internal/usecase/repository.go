@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 
 	"github.com/nextlag/gomart/internal/entity"
+	"github.com/nextlag/gomart/pkg/logger/l"
 	"github.com/nextlag/gomart/pkg/luna"
 )
 
@@ -186,6 +186,7 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 //
 // Если произошла ошибка при выполнении запроса к базе данных или при преобразовании результатов в JSON, метод возвращает ошибку.
 func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
+	log := l.L(ctx)
 	var (
 		allOrders []entity.Order
 		order     entity.Order
@@ -226,7 +227,7 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 		return nil, err
 	}
 
-	log.Print(string(result))
+	log.Info(string(result))
 	return result, nil
 }
 
@@ -241,6 +242,7 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 // Если произошла ошибка при выполнении запроса к базе данных, метод возвращает ошибку.
 // В случае ошибки, текущий баланс и сумму снятых средств считаются нулевыми.
 func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float32, error) {
+	log := l.L(ctx)
 	var user entity.User
 
 	db := bun.NewDB(uc.DB, pgdialect.New())
@@ -252,7 +254,7 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 		Where("login = ?", login).
 		Scan(ctx)
 	if err != nil {
-		fmt.Printf("error finding user's balance: %v", err)
+		log.Error("GetBalance", l.ErrAttr(err))
 		return 0, 0, err
 	}
 

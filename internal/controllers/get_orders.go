@@ -20,10 +20,10 @@ import (
 //
 // Возвращаемые значения:
 //   - нет.
-func (c *Controller) GetOrders(w http.ResponseWriter, _ *http.Request) {
+func (c *Controller) GetOrders(w http.ResponseWriter, r *http.Request) {
 	log := l.L(c.ctx)
 	// Получаем логин пользователя из контекста запроса
-	user, _ := c.ctx.Value(auth.LoginKey).(string)
+	user, _ := r.Context().Value(auth.LoginKey).(string)
 	// Получаем объект ошибки из UseCase
 	er := c.uc.Do().Err()
 

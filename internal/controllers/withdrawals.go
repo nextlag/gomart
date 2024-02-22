@@ -22,12 +22,12 @@ import (
 //
 // Возвращаемые значения:
 //   - нет.
-func (c *Controller) Withdrawals(w http.ResponseWriter, _ *http.Request) {
+func (c *Controller) Withdrawals(w http.ResponseWriter, r *http.Request) {
 	log := l.L(c.ctx)
 	// Получаем объект ошибки из UseCase
 	er := c.uc.Do().Err()
 	// Получаем логин пользователя из контекста
-	user, _ := c.ctx.Value(auth.LoginKey).(string)
+	user, _ := r.Context().Value(auth.LoginKey).(string)
 
 	// Получаем историю списаний средств пользователя из UseCase
 	result, err := c.uc.DoGetWithdrawals(c.ctx, user)
