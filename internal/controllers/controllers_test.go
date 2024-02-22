@@ -21,7 +21,7 @@ import (
 
 func controller(t *testing.T) (*Controller, *mocks.MockUseCase, *usecase.UseCase) {
 	t.Helper()
-	log := slogpretty.SetupLogger(config.ProjectRoot)
+	log := slogpretty.SetupLogger(config.Cfg.ProjectRoot)
 	var cfg config.HTTPServer
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
