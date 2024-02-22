@@ -4,7 +4,6 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/entity"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 // OrderResponse - структура предназначена для получения данных из системы начисления бонусов.
@@ -42,7 +42,8 @@ type OrderResponse struct {
 // в системе начислений), возвращается ошибка "internal server error in accrual system".
 // Если выполнение функции завершается по сигналу остановки, она возвращает текущее состояние
 // заказа без ошибки.
-func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
+func GetAccrual(ctx context.Context, order entity.Order, stop chan struct{}) (OrderResponse, error) {
+	log := l.L(ctx)
 	client := resty.New().SetBaseURL(config.Cfg.Accrual)
 	var orderUpdate OrderResponse
 
@@ -57,7 +58,7 @@ func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
 				Get("/api/orders/" + order.Order)
 
 			if err != nil {
-				log.Printf("got error trying to send a get request to accrual: %v", err)
+				log.Error("got error trying to send a get request to accrual", l.ErrAttr(err))
 				return orderUpdate, err
 			}
 
@@ -65,13 +66,13 @@ func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
 			case 200:
 				switch orderUpdate.Status {
 				case "INVALID", "PROCESSED":
-					log.Printf("Exiting the loop. Order status: %s", orderUpdate.Status)
+					log.Info("Exiting the loop. Order status: %s", orderUpdate.Status)
 					return orderUpdate, nil
 				case "PROCESSING":
-					log.Printf("Order status is PROCESSING. Sleeping for 1 second before the next request.")
+					log.Info("Order status is PROCESSING. Sleeping for 1 second before the next request.")
 					time.Sleep(1 * time.Second)
 				default:
-					log.Printf("Unknown order status: %s. Sleeping for 1 second before the next request.", orderUpdate.Status)
+					log.Info("Unknown order status: %s. Sleeping for 1 second before the next request.", orderUpdate.Status)
 					time.Sleep(1 * time.Second)
 				}
 			case 429:
@@ -99,9 +100,9 @@ func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
 // Затем она запускает цикл обработки этих заказов, вызывая функцию GetAccrual для каждого заказа
 // и обновляя статусы заказов в базе данных согласно полученной информации. Функция продолжает
 // работу до получения сигнала остановки из канала stop.
-func (uc *UseCase) Sync(stop chan struct{}) error {
+func (uc *UseCase) Sync(ctx context.Context, stop chan struct{}) error {
+	log := l.L(ctx)
 	ticker := time.NewTicker(tick)
-	ctx := context.Background()
 
 	for range ticker.C {
 		var allOrders []entity.Order
@@ -137,11 +138,11 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 		}
 
 		for _, unfinishedOrder := range allOrders {
-			finishedOrder, err := GetAccrual(unfinishedOrder, stop)
+			finishedOrder, err := GetAccrual(ctx, unfinishedOrder, stop)
 			if err != nil {
 				return err
 			}
-			log.Print("finished", finishedOrder)
+			log.Debug("finished", finishedOrder)
 			err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.UserName)
 			if err != nil {
 				return err

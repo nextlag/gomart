@@ -75,7 +75,7 @@ func main() {
 	defer close(stop)
 
 	go func() {
-		if err = db.Sync(stop); err != nil {
+		if err = db.Sync(ctx, stop); err != nil {
 			log.Error("db.Sync()", l.ErrAttr(err))
 			sigs <- os.Interrupt
 			return

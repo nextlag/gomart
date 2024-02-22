@@ -9,12 +9,6 @@ import (
 	"github.com/nextlag/gomart/internal/entity"
 )
 
-type Logger interface {
-	Info(msg string, args ...any)
-	Debug(msg string, args ...any)
-	Error(msg string, args ...any)
-}
-
 //go:generate mockgen -destination=mocks.go -package=usecase github.com/nextlag/gomart/internal/usecase Repository
 type Repository interface {
 	// Register - регистрация пользователя
