@@ -52,7 +52,7 @@ func main() {
 	defer db.Close()
 
 	// init usecase
-	uc := usecase.New(db, log, cfg)
+	uc := usecase.New(db, cfg)
 
 	// init controllers
 	controller := controllers.New(uc, log)

@@ -40,7 +40,7 @@ type UseCase struct {
 	DB     *sql.DB
 }
 
-func New(r Repository, l Logger, cfg config.HTTPServer) *UseCase {
+func New(r Repository, cfg config.HTTPServer) *UseCase {
 	e := &entity.AllEntity{}
 	return &UseCase{repo: r, cfg: cfg, entity: e}
 }

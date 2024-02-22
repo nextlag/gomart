@@ -63,7 +63,20 @@ func (uc *UseCase) Register(ctx context.Context, login string, password string) 
 	return nil
 }
 
-// Auth authenticates a user with the provided login and password.
+// Auth выполняет аутентификацию пользователя по указанному логину и паролю.
+// Метод выполняет запрос к базе данных для поиска пользователя с указанными
+// учетными данными. Если пользователь существует и его учетные данные совпадают
+// с переданными в метод логином и паролем, метод завершается успешно. В противном
+// случае возвращается ошибка.
+//
+// Параметры:
+//   - ctx: контекст выполнения запроса.
+//   - login: логин пользователя.
+//   - password: пароль пользователя.
+//
+// Возвращаемое значение:
+//   - error: в случае успешной аутентификации возвращается nil, в противном случае
+//     возвращается ошибка.
 func (uc *UseCase) Auth(ctx context.Context, login, password string) error {
 	var user entity.User
 
@@ -81,12 +94,27 @@ func (uc *UseCase) Auth(ctx context.Context, login, password string) error {
 	return nil
 }
 
-// InsertOrder inserts a new order for the specified user.
+// InsertOrder осуществляет вставку нового заказа в базу данных.
+// Метод принимает контекст ctx типа context.Context, имя пользователя user и описание заказа order.
+// Контекст ctx используется для управления временем жизни операции и для передачи значения времени выполнения, которое должно учитываться при выполнении операции.
+// Имя пользователя user представляет собой уникальный идентификатор пользователя, оформляющего заказ.
+// Описание заказа order содержит информацию о заказе, которую пользователь хочет добавить в базу данных.
+// Возвращает ошибку в случае любого сбоя операции или невозможности выполнить запрос к базе данных.
+// Возможные ошибки, которые могут возникнуть включают в себя:
+//   - ErrOrderFormat: неверный формат заказа.
+//   - ErrThisUser: заказ уже существует и принадлежит текущему пользователю.
+//   - ErrAnotherUser: заказ уже существует и принадлежит другому пользователю.
+//   - ошибку при начале транзакции.
+//   - ошибку при выполнении запроса к базе данных.
+//   - ошибку при коммите транзакции.
 func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) error {
+	// Получаем текущее время.
 	now := time.Now()
 
+	// Инициализируем переменную для отзыва бонусов.
 	bonusesWithdrawn := float32(0)
 
+	// Создаем объект заказа.
 	userOrder := &entity.Orders{
 		Users:            user,
 		Order:            order,
@@ -94,30 +122,40 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 		UploadedAt:       now,
 		BonusesWithdrawn: bonusesWithdrawn,
 	}
+
+	// Проверяем валидность заказа.
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
 		return uc.Err().ErrOrderFormat
 	}
 
+	// Начинаем транзакцию.
+	tx, err := uc.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning transaction: %v", err)
+	}
+	defer tx.Rollback()
+
+	// Создаем новый объект для работы с базой данных.
 	db := bun.NewDB(uc.DB, pgdialect.New())
 
+	// Проверяем существует ли уже заказ с таким же описанием.
 	var checkOrder entity.Orders
-
-	err := db.NewSelect().
+	err = db.NewSelect().
 		Model(&checkOrder).
 		Where(`"order" = ?`, order).
 		Scan(ctx)
 	if errors.Is(err, nil) {
-		// Заказ существует
+		// Если заказ существует, проверяем его принадлежность пользователю.
 		if checkOrder.Users == user {
-			// Заказ принадлежит текущему пользователю
+			// Заказ принадлежит текущему пользователю.
 			return uc.Err().ErrThisUser
 		}
-		// Заказ принадлежит другому пользователю
+		// Заказ принадлежит другому пользователю.
 		return uc.Err().ErrAnotherUser
 	}
 
-	// Заказ не существует, вставьте его
+	// Заказ не существует, вставляем его в базу данных.
 	_, err = db.NewInsert().
 		Model(userOrder).
 		Set("uploaded_at = ?", now.Format(time.RFC3339)).
@@ -126,6 +164,12 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 		return err
 	}
 
+	// Коммит транзакции.
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("error committing transaction: %v", err)
+	}
+
+	// Возвращаем nil в случае успешного выполнения операции.
 	return nil
 }
 
@@ -174,7 +218,15 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 	return result, nil
 }
 
-// GetBalance retrieves the balance and withdrawn amounts for a user.
+// GetBalance возвращает текущий баланс и сумму снятых средств пользователя по указанному логину.
+// Метод принимает контекст ctx типа context.Context и логин пользователя login.
+// Контекст ctx используется для управления временем жизни операции и для передачи значения времени выполнения, которое должно учитываться при выполнении операции.
+// Логин пользователя login является уникальным идентификатором пользователя, для которого нужно получить баланс.
+// Возвращает текущий баланс и сумму снятых средств пользователя. В случае успешного выполнения запроса, метод возвращает два значения типа float32:
+//   - текущий баланс
+//   - сумму снятых средств.
+//     Если произошла ошибка при выполнении запроса к базе данных, метод возвращает ошибку.
+//     В случае ошибки, текущий баланс и сумму снятых средств считаются нулевыми.
 func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float32, error) {
 	var user entity.User
 

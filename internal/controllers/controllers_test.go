@@ -28,7 +28,7 @@ func controller(t *testing.T) (*Controller, *mocks.MockUseCase, *usecase.UseCase
 
 	repo := mocks.NewMockUseCase(mockCtl)
 	db := usecase.NewMockRepository(mockCtl)
-	uc := usecase.New(db, log, cfg)
+	uc := usecase.New(db, cfg)
 
 	controller := New(repo, log)
 	return controller, repo, uc
@@ -96,7 +96,6 @@ func TestRegistrationHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// t.Parallel()
 			ctrl, repo, uc := controller(t)
 			repo.EXPECT().Do().Return(uc).Times(2)
 			switch {
@@ -149,7 +148,6 @@ func TestAuthenticationHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// t.Parallel()
 			ctrl, repo, uc := controller(t)
 			repo.EXPECT().Do().Return(uc).Times(2)
 			if tt.name == "NoValid auth" {
