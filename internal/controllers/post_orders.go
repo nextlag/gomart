@@ -70,7 +70,6 @@ func (c *Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	default:
 		// В остальных случаях возвращаем ошибку InternalServerError (500)
-		log.Error("insert Order 500", l.ErrAttr(err))
 		http.Error(w, er.ErrOrderAccepted.Error(), http.StatusAccepted)
 	}
 
