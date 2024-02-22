@@ -193,7 +193,7 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 
 	rows, err := db.NewSelect().
 		Model(&userOrder).
-		Where("users = ?", user).
+		Where("user = ?", user).
 		Order("uploaded_at ASC").
 		Rows(ctx)
 	if err != nil {
@@ -370,7 +370,7 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 	// Выборка всех заказов пользователя, где bonuses_withdrawn != 0
 	rows, err := db.NewSelect().
 		Model(&userOrder).
-		Where("users = ? and bonuses_withdrawn != 0", user).
+		Where("user = ? and bonuses_withdrawn != 0", user).
 		Order("uploaded_at ASC").
 		Rows(ctx)
 	rows.Err()
