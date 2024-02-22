@@ -2,16 +2,12 @@
 package logger
 
 import (
-	"log/slog"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/usecase"
-	"github.com/nextlag/gomart/pkg/logger/slogpretty"
 )
 
 // RequestFields содержит поля запроса для логгера.
@@ -66,17 +62,4 @@ func New(log usecase.Logger) func(next http.Handler) http.Handler {
 		}
 		return http.HandlerFunc(fn)
 	}
-}
-
-// SetupLogger - initialization of middleware for logging HTTP requests
-func SetupLogger() usecase.Logger {
-	opts := slogpretty.PrettyHandlerOptions{
-		SlogOpts: &slog.HandlerOptions{
-			Level: config.Cfg.LogLevel,
-		},
-	}
-
-	handler := opts.NewPrettyHandler(os.Stdout)
-
-	return slog.New(handler)
 }

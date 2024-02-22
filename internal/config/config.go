@@ -8,6 +8,8 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+const ProjectRoot = "/Users/nextbug/GoProjects/gomart/"
+
 type HTTPServer struct {
 	Host        string     `json:"host" env:"RUN_ADDRESS" envDefault:":8080"`
 	DSN         string     `json:"dsn,omitempty" env:"DATABASE_URI" envDefault:"postgres://postgres:Xer_0101@localhost/gophermart?sslmode=disable"`

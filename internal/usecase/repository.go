@@ -44,7 +44,7 @@ func (uc *UseCase) Register(ctx context.Context, login string, password string) 
 	}
 	tx, err := uc.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("error beginning transaction: %v", err)
+		return fmt.Errorf("error beginning transaction Register method: %v", err)
 	}
 	defer tx.Rollback() // Откатить транзакцию в случае ошибки
 	db := bun.NewDB(uc.DB, pgdialect.New())
@@ -57,8 +57,8 @@ func (uc *UseCase) Register(ctx context.Context, login string, password string) 
 		return err
 	}
 	// Завершить транзакцию
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("error committing transaction: %v", err)
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("error committing transaction Register method: %v", err)
 	}
 	return nil
 }
@@ -132,7 +132,7 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 	// Начинаем транзакцию.
 	tx, err := uc.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("error beginning transaction: %v", err)
+		return fmt.Errorf("error beginning transaction InsertOrder method: %v", err)
 	}
 	defer tx.Rollback()
 
@@ -165,15 +165,25 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 	}
 
 	// Коммит транзакции.
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("error committing transaction: %v", err)
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("error committing transaction InsertOrder method: %v", err)
 	}
 
 	// Возвращаем nil в случае успешного выполнения операции.
 	return nil
 }
 
-// GetOrders retrieves all orders for a specific user.
+// GetOrders возвращает заказы пользователя в формате JSON.
+// Метод принимает контекст ctx типа context.Context и имя пользователя user.
+// Контекст ctx используется для управления временем жизни операции и для передачи значения времени выполнения, которое должно учитываться при выполнении операции.
+// Имя пользователя user является уникальным идентификатором пользователя, для которого нужно получить заказы.
+// Возвращает список заказов пользователя в формате JSON. Каждый заказ представлен объектом с полями:
+//   - Order (описание заказа)
+//   - Status (статус заказа)
+//   - Accrual (начисление)
+//   - UploadedAt (дата загрузки заказа)
+//
+// Если произошла ошибка при выполнении запроса к базе данных или при преобразовании результатов в JSON, метод возвращает ошибку.
 func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 	var (
 		allOrders []entity.Orders
@@ -225,8 +235,9 @@ func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
 // Возвращает текущий баланс и сумму снятых средств пользователя. В случае успешного выполнения запроса, метод возвращает два значения типа float32:
 //   - текущий баланс
 //   - сумму снятых средств.
-//     Если произошла ошибка при выполнении запроса к базе данных, метод возвращает ошибку.
-//     В случае ошибки, текущий баланс и сумму снятых средств считаются нулевыми.
+//
+// Если произошла ошибка при выполнении запроса к базе данных, метод возвращает ошибку.
+// В случае ошибки, текущий баланс и сумму снятых средств считаются нулевыми.
 func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float32, error) {
 	var user entity.User
 
@@ -246,7 +257,22 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 	return user.Balance, user.Withdrawn, nil
 }
 
-// Debit debits bonuses from the user's account for a specific order.
+// Debit осуществляет списание средств с баланса пользователя и добавление информации о заказе в базу данных.
+// Метод принимает контекст ctx типа context.Context, имя пользователя user, номер заказа order и сумму списания sum.
+// Контекст ctx используется для управления временем жизни операции и для передачи значения времени выполнения, которое должно учитываться при выполнении операции.
+// Имя пользователя user является уникальным идентификатором пользователя, чей баланс будет уменьшен на сумму списания.
+// Номер заказа order представляет описание заказа, для которого будет произведено списание.
+// Сумма списания sum указывает количество средств, которое будет списано с баланса пользователя.
+// Возвращает ошибку в случае любого сбоя операции.
+//
+// Возможные ошибки:
+//   - ErrOrderFormat: некорректный формат номера заказа.
+//   - ErrNoBalance: недостаточно средств на балансе пользователя.
+//   - ErrBeginningTransaction: ошибка при начале транзакции.
+//   - ErrExecutingDatabaseQuery: ошибка при выполнении запроса к базе данных.
+//   - ErrCommittingTransaction: ошибка при коммите транзакции.
+//   - ErrAnotherUser: заказ существует и принадлежит другому пользователю.
+//   - ErrThisUser: заказ существует и принадлежит текущему пользователю.
 func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum float32) error {
 	// Проверка корректности номера заказа
 	validOrder := luna.CheckValidOrder(order)
@@ -264,6 +290,12 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 		// Если на счету пользователя недостаточно средств, возвращает ошибку
 		return uc.Err().ErrNoBalance
 	}
+
+	tx, err := uc.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning transaction Debit method: %v", err)
+	}
+	tx.Rollback()
 
 	// Инициализация подключения к базе данных
 	db := bun.NewDB(uc.DB, pgdialect.New())
@@ -312,11 +344,20 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 	if !errors.Is(err, nil) {
 		return err
 	}
-
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("error committing transaction Debit method: %v", err)
+	}
 	return nil
 }
 
-// GetWithdrawals method for getting all orders with bonuses removed for a specific user.
+// GetWithdrawals возвращает список снятий бонусов пользователя в формате JSON.
+// Метод принимает контекст ctx типа context.Context и имя пользователя user.
+// Контекст ctx используется для управления временем жизни операции и для передачи значения времени выполнения, которое должно учитываться при выполнении операции.
+// Имя пользователя user является уникальным идентификатором пользователя, для которого нужно получить список снятий бонусов.
+// Возвращает список снятий бонусов пользователя в формате JSON. Каждое снятие бонусов представлено объектом с полями Order (описание заказа), Sum (сумма снятия), Time (время снятия).
+// Если не найдено ни одного снятия бонусов для указанного пользователя, метод возвращает ошибку ErrNoRows.
+// В случае успешного выполнения операции, метод возвращает список снятий бонусов пользователя в формате JSON и nil.
+// В случае любой другой ошибки, возникшей при выполнении запроса к базе данных или при преобразовании результатов в JSON, метод возвращает ошибку.
 func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, error) {
 	var (
 		allOrders []Withdrawals

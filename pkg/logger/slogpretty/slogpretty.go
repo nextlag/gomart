@@ -6,12 +6,30 @@ import (
 	"io"
 	stdLog "log"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"runtime"
 
 	"github.com/fatih/color"
+
+	"github.com/nextlag/gomart/internal/config"
 )
 
+func SetupLogger(projectRoot string) *slog.Logger {
+	opts := PrettyHandlerOptions{
+		SlogOpts: &slog.HandlerOptions{
+			Level:     config.Cfg.LogLevel,
+			AddSource: true,
+		},
+		ProjectRoot: projectRoot,
+	}
+	handler := opts.NewPrettyHandler(os.Stdout, projectRoot)
+	return slog.New(handler)
+}
+
 type PrettyHandlerOptions struct {
-	SlogOpts *slog.HandlerOptions
+	SlogOpts    *slog.HandlerOptions
+	ProjectRoot string
 }
 
 type PrettyHandler struct {
@@ -19,14 +37,15 @@ type PrettyHandler struct {
 	slog.Handler
 	l     *stdLog.Logger
 	attrs []slog.Attr
+	File  string
+	Line  int
 }
 
-func (opts PrettyHandlerOptions) NewPrettyHandler(
-	out io.Writer,
-) *PrettyHandler {
+func (opts PrettyHandlerOptions) NewPrettyHandler(out io.Writer, projectRoot string) *PrettyHandler {
 	h := &PrettyHandler{
 		Handler: slog.NewJSONHandler(out, opts.SlogOpts),
 		l:       stdLog.New(out, "", 0),
+		opts:    PrettyHandlerOptions{ProjectRoot: projectRoot},
 	}
 
 	return h
@@ -67,6 +86,20 @@ func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
 			return err
 		}
 	}
+	_, file, line, ok := runtime.Caller(3)
+	if !ok {
+		file = "???" // Если информация не доступна
+		line = 0
+	}
+	relPath, err := filepath.Rel(h.opts.ProjectRoot, file)
+	if err != nil {
+		// Если произошла ошибка, использовать полный путь
+		relPath = file
+	}
+
+	// Добавляем информацию о вызове в лог
+	h.File = relPath
+	h.Line = line
 
 	timeStr := r.Time.Format("[02.01.2006 15:04:05.000]")
 	msg := color.CyanString(r.Message)
@@ -75,6 +108,7 @@ func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
 		timeStr,
 		level,
 		msg,
+		color.WhiteString("%s:%d", h.File, h.Line),
 		color.WhiteString(string(b)),
 	)
 

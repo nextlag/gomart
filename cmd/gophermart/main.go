@@ -13,9 +13,9 @@ import (
 
 	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/controllers"
-	"github.com/nextlag/gomart/internal/mw/logger"
 	"github.com/nextlag/gomart/internal/repository/psql"
 	"github.com/nextlag/gomart/internal/usecase"
+	"github.com/nextlag/gomart/pkg/logger/slogpretty"
 )
 
 func setupServer(router http.Handler) *http.Server {
@@ -31,7 +31,7 @@ func main() {
 	}
 
 	var (
-		log = logger.SetupLogger()
+		log = slogpretty.SetupLogger(config.ProjectRoot)
 		cfg = config.Cfg
 	)
 

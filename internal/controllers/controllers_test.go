@@ -15,13 +15,13 @@ import (
 
 	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/controllers/mocks"
-	"github.com/nextlag/gomart/internal/mw/logger"
 	"github.com/nextlag/gomart/internal/usecase"
+	"github.com/nextlag/gomart/pkg/logger/slogpretty"
 )
 
 func controller(t *testing.T) (*Controller, *mocks.MockUseCase, *usecase.UseCase) {
 	t.Helper()
-	log := logger.SetupLogger()
+	log := slogpretty.SetupLogger(config.ProjectRoot)
 	var cfg config.HTTPServer
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
