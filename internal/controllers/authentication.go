@@ -36,7 +36,7 @@ func (c *Controller) Authentication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	l := fmt.Sprintf("[%s] success authenticated", user.Login)
-	c.log.Info(l, "token", jwtToken)
+	c.log.Debug(l, "token", jwtToken)
 
 	// Возвращаем успешный статус и сообщение об успешной регистрации
 	w.WriteHeader(http.StatusOK)
