@@ -107,7 +107,9 @@ func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
 // работу до получения сигнала остановки из канала stop.
 func (uc *UseCase) Sync(stop chan struct{}) error {
 	ticker := time.NewTicker(tick)
+	defer ticker.Stop()
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	for {
 		select {
@@ -121,9 +123,9 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 				Where("status != ? AND status != ?", "PROCESSED", "INVALID").
 				Limit(batchSize).
 				Rows(ctx)
-			rows.Err()
 			if err != nil {
-				return err
+				log.Printf("error selecting orders: %v", err)
+				continue
 			}
 
 			for rows.Next() {
@@ -144,12 +146,14 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 			}
 			err = rows.Close()
 			if err != nil {
-				return err
+				log.Printf("error closing rows: %v", err)
+				continue
 			}
 
 			tx, err := db.BeginTx(ctx, nil)
 			if err != nil {
-				return err
+				log.Printf("error beginning transaction: %v", err)
+				continue
 			}
 
 			for _, unfinishedOrder := range allOrders {
@@ -160,12 +164,14 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 				default:
 					finishedOrder, err := GetAccrual(unfinishedOrder, stop)
 					if err != nil {
+						log.Printf("error getting accrual: %v", err)
 						tx.Rollback()
 						continue // Пропустить текущую итерацию цикла и перейти к следующей итерации
 					}
 					log.Print("finished", finishedOrder)
 					err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.UserName, tx)
 					if err != nil {
+						log.Printf("error updating status: %v", err)
 						tx.Rollback()
 						continue // Пропустить текущую итерацию цикла и перейти к следующей итерации
 					}
@@ -173,6 +179,7 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 			}
 
 			if err = tx.Commit(); err != nil {
+				log.Printf("error committing transaction: %v", err)
 				continue
 			}
 		case <-stop:

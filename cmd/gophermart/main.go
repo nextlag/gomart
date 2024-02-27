@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/go-chi/chi/v5"
@@ -64,13 +65,17 @@ func main() {
 	srv := setupServer(r)
 	log.Info("server starting", slog.String("host", srv.Addr))
 
+	// WaitGroup для ожидания завершения работы горутин
+	var wg sync.WaitGroup
+	wg.Add(2)
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	stop := make(chan struct{})
-	defer close(stop)
 
 	go func() {
+		defer wg.Done()
 		if err = db.Sync(stop); err != nil {
 			log.Error("db.Sync()", "error", err.Error())
 			sigs <- os.Interrupt
@@ -79,8 +84,7 @@ func main() {
 	}()
 
 	go func() {
-		// Закрытие канала stop при завершении работы функции
-		defer close(stop)
+		defer wg.Done()
 		if err = srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("failed to start server", "error", err.Error())
 			sigs <- os.Interrupt
@@ -88,7 +92,17 @@ func main() {
 		}
 	}()
 
-	log.Info("server started")
+	// Ожидание получения сигнала от OS
 	<-sigs
+
+	// Закрытие канала stop и остановка http-сервера
+	close(stop)
+	if err := srv.Shutdown(nil); err != nil {
+		log.Error("server shutdown error", "error", err.Error())
+	}
+
+	// Ожидание завершения работы горутин
+	wg.Wait()
+
 	log.Info("server stopped")
 }
