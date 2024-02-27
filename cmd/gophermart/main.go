@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	stdLog "log"
 	"log/slog"
@@ -97,7 +98,9 @@ func main() {
 
 	// Закрытие канала stop и остановка http-сервера
 	close(stop)
-	if err := srv.Shutdown(nil); err != nil {
+	// TODO
+	ctx := context.TODO()
+	if err = srv.Shutdown(ctx); err != nil {
 		log.Error("server shutdown error", "error", err.Error())
 	}
 

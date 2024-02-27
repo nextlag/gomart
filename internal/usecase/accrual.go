@@ -149,6 +149,9 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 				log.Printf("error closing rows: %v", err)
 				continue
 			}
+			if err = rows.Err(); err != nil {
+				log.Printf("Failed to execute query: connection refused: %v", err)
+			}
 
 			tx, err := db.BeginTx(ctx, nil)
 			if err != nil {
