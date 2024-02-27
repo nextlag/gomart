@@ -3,7 +3,6 @@ package controllers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/lib/pq"
@@ -83,6 +82,5 @@ func (c *Controller) Register(w http.ResponseWriter, r *http.Request) {
 
 	// Возвращаем успешный статус и сообщение об успешной регистрации
 	w.WriteHeader(http.StatusOK)
-	cookie := fmt.Sprintf("Cookie: %s=%s\n", auth.Cookie, jwt)
-	w.Write([]byte(cookie))
+	w.Write([]byte("success"))
 }

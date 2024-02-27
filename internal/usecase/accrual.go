@@ -3,6 +3,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -14,6 +15,11 @@ import (
 	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/entity"
 )
+
+// batchSize - размер батча - при большом количестве скопившихся заказов (или при горизонтальном масштабировании)
+// функция не попытается захватить сразу все записи из базы,
+// не затупит и не пропустит следующий tick.
+const batchSize = 30
 
 // OrderResponse - структура предназначена для получения данных из системы начисления бонусов.
 type OrderResponse struct {
@@ -75,11 +81,11 @@ func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
 					time.Sleep(1 * time.Second)
 				}
 			case 429:
-				return orderUpdate, fmt.Errorf("request limit exceeded: %v", err)
+				return orderUpdate, errors.New("request limit exceeded")
 			case 204:
-				return orderUpdate, fmt.Errorf("order isn't registered: %v", err)
+				return orderUpdate, errors.New("order isn't registered")
 			case 500:
-				return orderUpdate, fmt.Errorf("internal server error in accrual system: %v", err)
+				return orderUpdate, errors.New("internal server error in accrual system")
 			}
 		}
 	}
@@ -101,54 +107,79 @@ func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
 // работу до получения сигнала остановки из канала stop.
 func (uc *UseCase) Sync(stop chan struct{}) error {
 	ticker := time.NewTicker(tick)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	for range ticker.C {
-		var allOrders []entity.Order
-		order := &entity.Order{}
-		db := bun.NewDB(uc.DB, pgdialect.New())
+	for {
+		select {
+		case <-ticker.C:
+			var allOrders []entity.Order
+			order := &entity.Order{}
+			db := bun.NewDB(uc.DB, pgdialect.New())
 
-		rows, err := db.NewSelect().
-			Model(order).
-			Where("status != ? AND status != ?", "PROCESSED", "INVALID").
-			Rows(ctx)
-		rows.Err()
-		if err != nil {
-			return err
-		}
-
-		for rows.Next() {
-			var orderRow entity.Order
-			err = rows.Scan(&orderRow.UserName, &orderRow.Order, &orderRow.Status, &orderRow.Accrual, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn)
+			rows, err := db.NewSelect().
+				Model(order).
+				Where("status != ? AND status != ?", "PROCESSED", "INVALID").
+				Limit(batchSize).
+				Rows(ctx)
+			rows.Err()
 			if err != nil {
 				return err
 			}
-			allOrders = append(allOrders, entity.Order{
-				UserName:   orderRow.UserName,
-				Order:      orderRow.Order,
-				Status:     orderRow.Status,
-				Accrual:    orderRow.Accrual,
-				UploadedAt: orderRow.UploadedAt,
-			})
-		}
-		err = rows.Close()
-		if err != nil {
-			return err
-		}
 
-		for _, unfinishedOrder := range allOrders {
-			finishedOrder, err := GetAccrual(unfinishedOrder, stop)
+			for rows.Next() {
+				var orderRow entity.Order
+				err = rows.Scan(&orderRow.UserName, &orderRow.Order, &orderRow.Status, &orderRow.Accrual, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn)
+				if err != nil {
+					log.Printf("error scanning row: %v", err)
+					continue
+				}
+
+				allOrders = append(allOrders, entity.Order{
+					UserName:   orderRow.UserName,
+					Order:      orderRow.Order,
+					Status:     orderRow.Status,
+					Accrual:    orderRow.Accrual,
+					UploadedAt: orderRow.UploadedAt,
+				})
+			}
+			err = rows.Close()
 			if err != nil {
 				return err
 			}
-			log.Print("finished", finishedOrder)
-			err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.UserName)
+
+			tx, err := db.BeginTx(ctx, nil)
 			if err != nil {
 				return err
 			}
+
+			for _, unfinishedOrder := range allOrders {
+				select {
+				case <-stop:
+					cancel()
+					return nil // В случае получения сигнала остановки, завершаем выполнение без ошибок
+				default:
+					finishedOrder, err := GetAccrual(unfinishedOrder, stop)
+					if err != nil {
+						tx.Rollback()
+						continue // Пропустить текущую итерацию цикла и перейти к следующей итерации
+					}
+					log.Print("finished", finishedOrder)
+					err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.UserName, tx)
+					if err != nil {
+						tx.Rollback()
+						continue // Пропустить текущую итерацию цикла и перейти к следующей итерации
+					}
+				}
+			}
+
+			if err = tx.Commit(); err != nil {
+				continue
+			}
+		case <-stop:
+			cancel()
+			return nil // В случае получения сигнала остановки, завершаем выполнение без ошибок
 		}
 	}
-	return nil
 }
 
 // UpdateStatus обновляет статус заказа и баланс пользователя в базе данных на основе полученных данных о начислении.
@@ -166,14 +197,13 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 // Сначала она обновляет статус заказа и начисление в таблице заказов, а затем обновляет баланс пользователя
 // в соответствии с начисленной суммой. Если произошла ошибка при выполнении запросов к базе данных,
 // функция возвращает ошибку.
-func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string) error {
+func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string, tx bun.Tx) error {
 
 	orderModel := &entity.Order{}
 	userModel := &entity.User{}
 
-	db := bun.NewDB(uc.DB, pgdialect.New())
-
-	_, err := db.NewUpdate().
+	// Используем tx для создания запроса обновления
+	_, err := tx.NewUpdate().
 		Model(orderModel).
 		Set("status = ?, accrual = ?", orderAccrual.Status, orderAccrual.Accrual).
 		Where(`"order" = ?`, orderAccrual.Order).
@@ -182,7 +212,7 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 		return err
 	}
 
-	_, err = db.NewUpdate().
+	_, err = tx.NewUpdate().
 		Model(userModel).
 		Set("balance = balance + ?", orderAccrual.Accrual).
 		Where(`login = ?`, login).
