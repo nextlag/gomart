@@ -13,6 +13,7 @@ import (
 	"github.com/uptrace/bun/dialect/pgdialect"
 
 	"github.com/nextlag/gomart/internal/entity"
+	"github.com/nextlag/gomart/pkg/logger/l"
 	"github.com/nextlag/gomart/pkg/luna"
 )
 
@@ -36,30 +37,71 @@ type Withdrawals struct {
 //   - password: пароль нового пользователя.
 //
 // Возвращаемое значение:
+//
 //   - error: если произошла ошибка во время выполнения запроса или транзакции,
 //     возвращается ошибка, в противном случае nil.
-func (uc *UseCase) Register(ctx context.Context, login string, password string) error {
-	user := &entity.User{
-		Login:    login,
-		Password: password,
-	}
+//
+//     func (uc *UseCase) Register(ctx context.Context, login string, password string) error {
+//     user := &entity.User{
+//     Login:    login,
+//     Password: password,
+//     }
+//     tx, err := uc.DB.BeginTx(ctx, nil)
+//     if err != nil {
+//     return fmt.Errorf("error beginning transaction Register method: %v", err)
+//     }
+//     defer tx.Rollback() // Откатить транзакцию в случае ошибки
+//     db := bun.NewDB(uc.DB, pgdialect.New())
+//
+//     _, err = db.NewInsert().
+//     Model(user).
+//     Exec(ctx)
+//
+//     if err != nil {
+//     return err
+//     }
+//     // Завершить транзакцию
+//     if err = tx.Commit(); err != nil {
+//     return fmt.Errorf("error committing transaction Register method: %v", err)
+//     }
+//     return nil
+//     }
+const insertUser = `
+	INSERT INTO "users" (login, password, balance, withdrawn)
+	VALUES ($1, $2, 0, 0) RETURNING login, password, balance, withdrawn
+`
+
+func (uc *UseCase) Register(ctx context.Context, login, password string) error {
+	var eUsers entity.User
+
 	tx, err := uc.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("error beginning transaction Register method: %v", err)
-	}
-	defer tx.Rollback() // Откатить транзакцию в случае ошибки
-	db := bun.NewDB(uc.DB, pgdialect.New())
-
-	_, err = db.NewInsert().
-		Model(user).
-		Exec(ctx)
-
-	if err != nil {
+		l.L(ctx).Error("begin transaction", l.ErrAttr(err))
 		return err
 	}
-	// Завершить транзакцию
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("error committing transaction Register method: %v", err)
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			err = fmt.Errorf("commit transaction: %v", err)
+		}
+	}()
+
+	err = uc.DB.QueryRowContext(ctx, insertUser, login, password).Scan(
+		&eUsers.Login,
+		&eUsers.Password,
+		&eUsers.Balance,
+		&eUsers.Withdrawn,
+	)
+
+	if err != nil {
+		l.L(ctx).Error("error pushing data in table users", l.ErrAttr(err))
+		return err
 	}
 	return nil
 }

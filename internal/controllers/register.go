@@ -56,7 +56,7 @@ func (c *Controller) Register(w http.ResponseWriter, r *http.Request) {
 	log.Debug("findings", "login", user.Login, "password", user.Password)
 
 	// Вызываем метод DoRegister UseCase для выполнения регистрации
-	if err := c.uc.DoRegister(c.ctx, user.Login, user.Password, r); err != nil {
+	if err = c.uc.DoRegister(c.ctx, user.Login, user.Password, r); err != nil {
 		// Обрабатываем ошибку регистрации
 		var pqErr *pq.Error
 		isPGError := errors.As(err, &pqErr)

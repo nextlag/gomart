@@ -10,14 +10,14 @@ const (
 	usersTable = `CREATE TABLE IF NOT EXISTS users (
 		login VARCHAR(255) PRIMARY KEY,
 		password VARCHAR(255),
-		balance FLOAT,
-		withdrawn FLOAT
+		balance FLOAT not null ,
+		withdrawn FLOAT not null 
 	);`
 	ordersTable = `CREATE TABLE IF NOT EXISTS orders (
 		"user_name" VARCHAR(255),
 		"order" VARCHAR(255) PRIMARY KEY,
 		status VARCHAR(255),
-		accrual FLOAT,
+		accrual FLOAT not null ,
 		uploaded_at TIMESTAMP,
 		bonuses_withdrawn FLOAT
 	);`
