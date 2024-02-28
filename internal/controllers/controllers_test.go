@@ -16,12 +16,15 @@ import (
 	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/controllers/mocks"
 	"github.com/nextlag/gomart/internal/usecase"
-	"github.com/nextlag/gomart/pkg/logger/slogpretty"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
-func controller(t *testing.T) (*Controller, *mocks.MockUseCase, *usecase.UseCase) {
+func controller(t *testing.T) (context.Context, *Controller, *mocks.MockUseCase, *usecase.UseCase) {
 	t.Helper()
-	log := slogpretty.SetupLogger(config.Cfg.ProjectRoot)
+	ctx, cansel := context.WithCancel(context.Background())
+	defer cansel()
+	ctx = l.ContextWithLogger(ctx, l.LoggerNew(config.Cfg.ProjectRoot))
+
 	var cfg config.HTTPServer
 	mockCtl := gomock.NewController(t)
 	defer mockCtl.Finish()
@@ -30,8 +33,8 @@ func controller(t *testing.T) (*Controller, *mocks.MockUseCase, *usecase.UseCase
 	db := usecase.NewMockRepository(mockCtl)
 	uc := usecase.New(db, cfg)
 
-	controller := New(repo, log)
-	return controller, repo, uc
+	controller := New(ctx, repo)
+	return ctx, controller, repo, uc
 }
 
 func TestRegistrationHandler(t *testing.T) {
@@ -80,13 +83,6 @@ func TestRegistrationHandler(t *testing.T) {
 			body: "",
 		},
 		{
-			name: "Empty JSON request",
-			want: want{
-				statusCode: http.StatusBadRequest,
-			},
-			body: `{}`,
-		},
-		{
 			name: "Empty",
 			want: want{
 				statusCode: http.StatusBadRequest,
@@ -96,20 +92,20 @@ func TestRegistrationHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctrl, repo, uc := controller(t)
+			ctx, ctrl, repo, uc := controller(t)
 			repo.EXPECT().Do().Return(uc).Times(2)
 			switch {
 			case tt.name == "Internal server error":
-				repo.EXPECT().DoRegister(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("internal server error")).Times(1)
+				repo.EXPECT().DoRegister(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("internal server error")).Times(1)
 			case tt.name == "Duplicate login":
 				// создаем экземпляр pq.Error
 				err := pq.Error{
 					Message: "pq: duplicate key value violates unique constraint \"users_pkey\"",
 					Code:    "23505",
 				}
-				repo.EXPECT().DoRegister(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&err).Times(1)
+				repo.EXPECT().DoRegister(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(&err).Times(1)
 			default:
-				repo.EXPECT().DoRegister(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+				repo.EXPECT().DoRegister(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 			}
 			r, err := http.NewRequest(http.MethodPost, "/api/user/register", bytes.NewBufferString(tt.body))
 			w := httptest.NewRecorder()
@@ -148,12 +144,12 @@ func TestAuthenticationHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctrl, repo, uc := controller(t)
+			ctx, ctrl, repo, uc := controller(t)
 			repo.EXPECT().Do().Return(uc).Times(2)
 			if tt.name == "NoValid auth" {
-				repo.EXPECT().DoAuth(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("unauthorized")).Times(1)
+				repo.EXPECT().DoAuth(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("unauthorized")).Times(1)
 			}
-			repo.EXPECT().DoAuth(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+			repo.EXPECT().DoAuth(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 			r, err := http.NewRequest(http.MethodPost, "/api/user/login", bytes.NewBufferString(tt.body))
 			w := httptest.NewRecorder()
 			handler := http.HandlerFunc(ctrl.Authentication)

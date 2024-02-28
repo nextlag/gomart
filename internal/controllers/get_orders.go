@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/nextlag/gomart/internal/mw/auth"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 // GetOrders обрабатывает запрос на получение заказов пользователя.
@@ -20,16 +21,17 @@ import (
 // Возвращаемые значения:
 //   - нет.
 func (c *Controller) GetOrders(w http.ResponseWriter, r *http.Request) {
+	log := l.L(c.ctx)
 	// Получаем логин пользователя из контекста запроса
 	user, _ := r.Context().Value(auth.LoginKey).(string)
 	// Получаем объект ошибки из UseCase
 	er := c.uc.Do().Err()
 
 	// Получаем список заказов пользователя из UseCase
-	result, err := c.uc.DoGetOrders(r.Context(), user)
+	result, err := c.uc.DoGetOrders(c.ctx, user)
 	if err != nil {
 		// Если произошла ошибка при получении списка заказов, логируем её и возвращаем ошибку InternalServerError
-		c.log.Error("handler GetOrders", "error", err.Error())
+		log.Error("handler GetOrders", l.ErrAttr(err))
 		http.Error(w, er.ErrInternalServer.Error(), http.StatusInternalServerError)
 		return
 	}

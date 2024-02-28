@@ -4,8 +4,6 @@ package usecase
 import (
 	"context"
 	"errors"
-	"fmt"
-	"log"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -14,6 +12,7 @@ import (
 
 	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/entity"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 // batchSize - размер батча - при большом количестве скопившихся заказов (или при горизонтальном масштабировании)
@@ -48,7 +47,8 @@ type OrderResponse struct {
 // в системе начислений), возвращается ошибка "internal server error in accrual system".
 // Если выполнение функции завершается по сигналу остановки, она возвращает текущее состояние
 // заказа без ошибки.
-func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
+func GetAccrual(ctx context.Context, order entity.Order, stop chan struct{}) (OrderResponse, error) {
+	log := l.L(ctx)
 	client := resty.New().SetBaseURL(config.Cfg.Accrual)
 	var orderUpdate OrderResponse
 
@@ -63,7 +63,7 @@ func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
 				Get("/api/orders/" + order.Order)
 
 			if err != nil {
-				log.Printf("got error trying to send a get request to accrual: %v", err)
+				log.Error("got error trying to send a get request to accrual", l.ErrAttr(err))
 				return orderUpdate, err
 			}
 
@@ -71,13 +71,13 @@ func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
 			case 200:
 				switch orderUpdate.Status {
 				case "INVALID", "PROCESSED":
-					log.Printf("Exiting the loop. Order status: %s", orderUpdate.Status)
+					log.Info("Exiting the loop. Order status: %s", orderUpdate.Status)
 					return orderUpdate, nil
 				case "PROCESSING":
-					log.Printf("Order status is PROCESSING. Sleeping for 1 second before the next request.")
+					log.Info("Order status is PROCESSING. Sleeping for 1 second before the next request.")
 					time.Sleep(1 * time.Second)
 				default:
-					log.Printf("Unknown order status: %s. Sleeping for 1 second before the next request.", orderUpdate.Status)
+					log.Info("Unknown order status: %s. Sleeping for 1 second before the next request.", orderUpdate.Status)
 					time.Sleep(1 * time.Second)
 				}
 			case 429:
@@ -105,7 +105,8 @@ func GetAccrual(order entity.Order, stop chan struct{}) (OrderResponse, error) {
 // Затем она запускает цикл обработки этих заказов, вызывая функцию GetAccrual для каждого заказа
 // и обновляя статусы заказов в базе данных согласно полученной информации. Функция продолжает
 // работу до получения сигнала остановки из канала stop.
-func (uc *UseCase) Sync(stop chan struct{}) error {
+func (uc *UseCase) Sync(ctx context.Context, stop chan struct{}) error {
+	log := l.L(ctx)
 	ticker := time.NewTicker(tick)
 	defer ticker.Stop()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -124,7 +125,7 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 				Limit(batchSize).
 				Rows(ctx)
 			if err != nil {
-				log.Printf("error selecting orders: %v", err)
+				log.Error("error selecting orders", l.ErrAttr(err))
 				continue
 			}
 
@@ -132,7 +133,7 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 				var orderRow entity.Order
 				err = rows.Scan(&orderRow.UserName, &orderRow.Order, &orderRow.Status, &orderRow.Accrual, &orderRow.UploadedAt, &orderRow.BonusesWithdrawn)
 				if err != nil {
-					log.Printf("error scanning row: %v", err)
+					log.Error("error scanning row", l.ErrAttr(err))
 					continue
 				}
 
@@ -146,16 +147,16 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 			}
 			err = rows.Close()
 			if err != nil {
-				log.Printf("error closing rows: %v", err)
+				log.Error("error closing rows", l.ErrAttr(err))
 				continue
 			}
 			if err = rows.Err(); err != nil {
-				log.Printf("Failed to execute query: connection refused: %v", err)
+				log.Error("Failed to execute query: connection refused", l.ErrAttr(err))
 			}
 
 			tx, err := db.BeginTx(ctx, nil)
 			if err != nil {
-				log.Printf("error beginning transaction: %v", err)
+				log.Error("error beginning transaction", l.ErrAttr(err))
 				continue
 			}
 
@@ -165,16 +166,16 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 					cancel()
 					return nil // В случае получения сигнала остановки, завершаем выполнение без ошибок
 				default:
-					finishedOrder, err := GetAccrual(unfinishedOrder, stop)
+					finishedOrder, err := GetAccrual(ctx, unfinishedOrder, stop)
 					if err != nil {
-						log.Printf("error getting accrual: %v", err)
+						log.Error("error getting accrual", l.ErrAttr(err))
 						tx.Rollback()
 						continue // Пропустить текущую итерацию цикла и перейти к следующей итерации
 					}
-					log.Print("finished", finishedOrder)
+					log.Debug("finished", finishedOrder)
 					err = uc.UpdateStatus(ctx, finishedOrder, unfinishedOrder.UserName, tx)
 					if err != nil {
-						log.Printf("error updating status: %v", err)
+						log.Error("error updating status", l.ErrAttr(err))
 						tx.Rollback()
 						continue // Пропустить текущую итерацию цикла и перейти к следующей итерации
 					}
@@ -182,7 +183,7 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 			}
 
 			if err = tx.Commit(); err != nil {
-				log.Printf("error committing transaction: %v", err)
+				log.Error("error committing transaction", l.ErrAttr(err))
 				continue
 			}
 		case <-stop:
@@ -208,7 +209,7 @@ func (uc *UseCase) Sync(stop chan struct{}) error {
 // в соответствии с начисленной суммой. Если произошла ошибка при выполнении запросов к базе данных,
 // функция возвращает ошибку.
 func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string, tx bun.Tx) error {
-
+	log := l.L(ctx)
 	orderModel := &entity.Order{}
 	userModel := &entity.User{}
 
@@ -228,7 +229,8 @@ func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse,
 		Where(`login = ?`, login).
 		Exec(ctx)
 	if err != nil {
-		return fmt.Errorf("error making an update request in user table: %v", err)
+		log.Error("error making an update request in user table", l.ErrAttr(err))
+		return err
 	}
 	return nil
 }

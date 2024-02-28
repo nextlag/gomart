@@ -2,12 +2,14 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/usecase"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 const (
@@ -21,7 +23,8 @@ type Claims struct {
 }
 
 // buildJWTString generates a JWT token with the provided login and signs it using the configured secret key.
-func buildJWTString(login string, log usecase.Logger) (string, error) {
+func buildJWTString(ctx context.Context, login string) (string, error) {
+	log := l.L(ctx)
 	// Создает новый токен JWT с пользовательскими клеймами и подписывает его с использованием алгоритма HMAC SHA-256.
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{},
@@ -32,7 +35,7 @@ func buildJWTString(login string, log usecase.Logger) (string, error) {
 	// Подписывает токен с использованием секретного ключа и получает строку токена.
 	tokenString, err := jwtToken.SignedString([]byte(config.Cfg.SecretToken))
 	if err != nil {
-		log.Error("token signing error", "error buildJWTString", err.Error())
+		log.Error("token signing error", l.ErrAttr(err))
 		return "", err
 	}
 
@@ -40,11 +43,12 @@ func buildJWTString(login string, log usecase.Logger) (string, error) {
 }
 
 // SetAuth creates a new cookie for the provided login and sets it in the HTTP response.
-func SetAuth(login string, log usecase.Logger, w http.ResponseWriter) (string, error) {
+func SetAuth(ctx context.Context, user string, w http.ResponseWriter) (string, error) {
+	log := l.L(ctx)
 	// Сгенерировать токен JWT для логина.
-	jwtToken, err := buildJWTString(login, log)
+	jwtToken, err := buildJWTString(ctx, user)
 	if err != nil {
-		log.Error("cookie creation error", "error SetAuth", err.Error())
+		log.Error("cookie creation error", l.ErrAttr(err))
 		return "", err
 	}
 
@@ -62,7 +66,8 @@ func SetAuth(login string, log usecase.Logger, w http.ResponseWriter) (string, e
 
 // getLogin извлекает логин пользователя из предоставленного токена JWT.
 // A function used to get a user's login using a JWT. It accepts a JWT and returns a login and error.
-func getLogin(tokenString string, log usecase.Logger) (string, error) {
+func getLogin(ctx context.Context, tokenString string) (string, error) {
+	log := l.L(ctx)
 	log.Debug("getLogin", "received token", tokenString)
 
 	claims := &Claims{}
@@ -74,7 +79,7 @@ func getLogin(tokenString string, log usecase.Logger) (string, error) {
 		return []byte(config.Cfg.SecretToken), nil
 	})
 	if err != nil {
-		log.Error("error parsing token", "getLogin", err.Error())
+		log.Error("error parsing token", l.ErrAttr(err))
 		return "", usecase.ErrToken
 	}
 	if !token.Valid {
@@ -86,7 +91,8 @@ func getLogin(tokenString string, log usecase.Logger) (string, error) {
 }
 
 // GetCookie retrieves the user's login from the "ErrAuth" cookie.
-func GetCookie(log usecase.Logger, r *http.Request) (string, error) {
+func GetCookie(ctx context.Context, r *http.Request) (string, error) {
+	log := l.L(ctx)
 	// Извлечь подписанную куку логина из запроса.
 	signedLogin, err := r.Cookie(Cookie)
 	if err != nil {
@@ -95,9 +101,9 @@ func GetCookie(log usecase.Logger, r *http.Request) (string, error) {
 	}
 
 	// Извлекает логин из токена JWT в куке.
-	login, err := getLogin(signedLogin.Value, log)
+	login, err := getLogin(ctx, signedLogin.Value)
 	if err != nil {
-		log.Error("error reading cookie", "error GetCookie", err.Error())
+		log.Error("error reading cookie", l.ErrAttr(err))
 		return "", err
 	}
 	log.Debug("GetCookie", "login", login)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/nextlag/gomart/internal/mw/auth"
 	"github.com/nextlag/gomart/pkg/generatestring"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 // Register обрабатывает запрос на регистрацию нового пользователя.
@@ -27,6 +28,7 @@ import (
 // Возвращаемые значения:
 //   - нет.
 func (c *Controller) Register(w http.ResponseWriter, r *http.Request) {
+	log := l.L(c.ctx)
 	// Получаем объект пользователя из UseCase
 	user := c.uc.Do().GetEntity()
 	// Получаем объект ошибки из UseCase
@@ -39,32 +41,32 @@ func (c *Controller) Register(w http.ResponseWriter, r *http.Request) {
 	// Проверяем наличие ошибок при декодировании
 	switch {
 	case err != nil:
-		c.log.Error("failed to process the request", "error", err.Error())
+		log.Error("failed to process the request", l.ErrAttr(err))
 		http.Error(w, er.ErrDecodeJSON.Error(), http.StatusBadRequest)
 		return
 	case len(user.Login) == 0:
-		c.log.Error("error: empty login", "error", err, "login", user.Login)
+		log.Error("error: empty login", "login", user.Login)
 		http.Error(w, er.ErrRequest.Error(), http.StatusBadRequest)
 		return
 	case len(user.Password) == 0:
 		user.Password = generatestring.NewRandomString(8)
-		c.log.Info("generating password", "login", user.Login, "password", user.Password)
+		log.Info("generating password", "login", user.Login, "password", user.Password)
 	}
 
-	c.log.Debug("findings", "login", user.Login, "password", user.Password)
+	log.Debug("findings", "login", user.Login, "password", user.Password)
 
 	// Вызываем метод DoRegister UseCase для выполнения регистрации
-	if err := c.uc.DoRegister(r.Context(), user.Login, user.Password, r); err != nil {
+	if err := c.uc.DoRegister(c.ctx, user.Login, user.Password, r); err != nil {
 		// Обрабатываем ошибку регистрации
 		var pqErr *pq.Error
 		isPGError := errors.As(err, &pqErr)
 		switch {
 		case isPGError && pqErr.Code == "23505":
-			c.log.Error("Duplicate login", "error", err.Error())
+			log.Error("Duplicate login", l.ErrAttr(err))
 			// Если дубликат логина - возвращаем конфликт
 			http.Error(w, er.ErrNoLogin.Error(), http.StatusConflict)
 		default:
-			c.log.Error("Register error", "error", err.Error())
+			log.Error("Register error", l.ErrAttr(err))
 			// В противном случае возвращаем внутреннюю ошибку сервера
 			http.Error(w, er.ErrInternalServer.Error(), http.StatusInternalServerError)
 		}
@@ -72,13 +74,13 @@ func (c *Controller) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Устанавливаем аутентификационную куку после успешной регистрации
-	jwt, err := auth.SetAuth(user.Login, c.log, w)
+	jwt, err := auth.SetAuth(c.ctx, user.Login, w)
 	if err != nil {
-		c.log.Error("can't set cookie: ", "error controllers|register", err.Error())
+		log.Error("can't set cookie: ", l.ErrAttr(err))
 		http.Error(w, er.ErrInternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
-	c.log.Debug("authentication", "login", user.Login, "password", user.Password, "token", jwt)
+	log.Debug("authentication", "login", user.Login, "password", user.Password, "token", jwt)
 
 	// Возвращаем успешный статус и сообщение об успешной регистрации
 	w.WriteHeader(http.StatusOK)

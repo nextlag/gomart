@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/nextlag/gomart/internal/mw/auth"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 // debit - структура используемая для анализа json-запроса на вывод бонусов при оформлении заказа.
@@ -29,6 +30,7 @@ type debit struct {
 // Возвращаемые значения:
 //   - нет.
 func (c *Controller) Withdraw(w http.ResponseWriter, r *http.Request) {
+	log := l.L(c.ctx)
 	// Получаем объект ошибки из UseCase
 	er := c.uc.Do().Err()
 	// Получаем логин пользователя из контекста
@@ -41,34 +43,33 @@ func (c *Controller) Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Логируем запрос на списание средств
-	c.log.Debug("debet request", "user", user, "order", request.Order, "sum", request.Sum)
+	log.Debug("debet request", "user", user, "order", request.Order, "sum", request.Sum)
 
 	// Вызываем метод DoDebit UseCase для списания средств
-	err := c.uc.Do().DoDebit(r.Context(), user, request.Order, request.Sum)
+	err := c.uc.Do().DoDebit(c.ctx, user, request.Order, request.Sum)
 	switch {
 	case errors.Is(err, er.ErrNoBalance):
 		// Если недостаточно средств на счете, возвращаем ошибку PaymentRequired (402)
-		c.log.Error("there are insufficient funds in the account", "NoBalance", er.ErrNoBalance.Error())
+		log.Error("there are insufficient funds in the account", l.ErrAttr(err))
 		http.Error(w, er.ErrNoBalance.Error(), http.StatusPaymentRequired)
 		return
 	case errors.Is(err, er.ErrOrderFormat):
 		// Если неверный формат заказа, возвращаем ошибку UnprocessableEntity (422)
-		c.log.Error("Withdraw OrderFormat", "error", err.Error())
+		log.Error("Withdraw OrderFormat", l.ErrAttr(err))
 		http.Error(w, er.ErrOrderFormat.Error(), http.StatusUnprocessableEntity)
 		return
 	case errors.Is(err, er.ErrThisUser) || errors.Is(err, er.ErrAnotherUser):
 		// Если заказ уже обработан, возвращаем ошибку Conflict (409)
-		c.log.Debug("withdraw", "user", user, "order", request.Order)
-		c.log.Error("Withdraw AnotherUser", "error", err.Error())
+		log.Debug("withdraw", "user", user, "order", request.Order)
+		log.Error("Withdraw AnotherUser", l.ErrAttr(err))
 		http.Error(w, "order is already loaded", http.StatusConflict)
 		return
 	case err != nil:
 		// Если произошла другая ошибка при списании средств, возвращаем ошибку InternalServerError (500)
-		c.log.Error("Withdraw handler", "error", err.Error())
+		log.Error("Withdraw handler", l.ErrAttr(err))
 		http.Error(w, er.ErrInternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	// Возвращаем успешный статус и сообщение об успешном списании средств
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("bonuses were written off success"))

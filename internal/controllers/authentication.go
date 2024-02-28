@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/nextlag/gomart/internal/mw/auth"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 // Authentication обрабатывает запрос на аутентификацию пользователя.
@@ -27,6 +28,7 @@ import (
 // Возвращаемые значения:
 //   - нет.
 func (c *Controller) Authentication(w http.ResponseWriter, r *http.Request) {
+	log := l.L(c.ctx)
 	// Получаем данные пользователя из UseCase
 	user := c.uc.Do().GetEntity()
 	// Получаем объект ошибки из UseCase
@@ -37,32 +39,32 @@ func (c *Controller) Authentication(w http.ResponseWriter, r *http.Request) {
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&user); err != nil {
 		// Если произошла ошибка при декодировании JSON, возвращаем ошибку BadRequest
-		c.log.Error("decode JSON", "error Login handler", err.Error())
+		log.Error("decode JSON", l.ErrAttr(err))
 		http.Error(w, er.ErrDecodeJSON.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Проверяем логин и пароль пользователя
-	if err := c.uc.DoAuth(r.Context(), user.Login, user.Password, r); err != nil {
+	if err := c.uc.DoAuth(c.ctx, user.Login, user.Password, r); err != nil {
 		// Если логин или пароль неверны, возвращаем ошибку Unauthorized
-		c.log.Error("incorrect login or password", "error Login handler", err.Error())
+		log.Error("incorrect login or password", l.ErrAttr(err))
 		http.Error(w, er.ErrUnauthorized.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	// Устанавливаем аутентификационный токен в куки
-	jwtToken, err := auth.SetAuth(user.Login, c.log, w)
+	jwtToken, err := auth.SetAuth(c.ctx, user.Login, w)
 	if err != nil {
 		// Если не удалось установить куки, возвращаем ошибку InternalServerError
-		c.log.Error("can't set cookie", "error Login handler", err.Error())
+		log.Error("can't set cookie", l.ErrAttr(err))
 		http.Error(w, er.ErrNoCookie.Error(), http.StatusInternalServerError)
 		return
 	}
 	// Логируем успешную аутентификацию
-	l := fmt.Sprintf("[%s] success authenticated", user.Login)
-	c.log.Debug(l, "token", jwtToken)
+	a := fmt.Sprintf("[%s] success authenticated", user.Login)
+	log.Debug(a, "token", jwtToken)
 
 	// Возвращаем успешный статус и сообщение об успешной аутентификации
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(l))
+	w.Write([]byte(a))
 }

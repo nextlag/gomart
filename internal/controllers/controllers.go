@@ -29,12 +29,12 @@ type UseCase interface {
 }
 
 type Controller struct {
+	ctx context.Context
 	uc  UseCase
-	log usecase.Logger
 }
 
-func New(uc UseCase, log usecase.Logger) *Controller {
-	return &Controller{uc: uc, log: log}
+func New(ctx context.Context, uc UseCase) *Controller {
+	return &Controller{ctx: ctx, uc: uc}
 }
 
 // Router настраивает маршруты для обработчика запросов.
@@ -51,7 +51,7 @@ func New(uc UseCase, log usecase.Logger) *Controller {
 func (c *Controller) Router(handler *chi.Mux) *chi.Mux {
 	// Использование middleware для обработки запросов
 	handler.Use(middleware.RequestID)
-	handler.Use(logger.New(c.log))
+	handler.Use(logger.New(c.ctx))
 	handler.Use(middleware.Logger)
 	handler.Use(gzip.New())
 	handler.Use(middleware.Recoverer)
@@ -63,7 +63,7 @@ func (c *Controller) Router(handler *chi.Mux) *chi.Mux {
 		r.Post("/api/user/login", c.Authentication)
 
 		// Группа маршрутов, требующих аутентификации пользователя
-		r.With(auth.CookieAuthentication(c.log, c.uc.Do().Err())).Group(func(r chi.Router) {
+		r.With(auth.CookieAuthentication(c.ctx, c.uc.Do().Err())).Group(func(r chi.Router) {
 			// Маршруты для работы с заказами, балансом и выводом средств
 			r.Post("/api/user/orders", c.PostOrders)
 			r.Post("/api/user/balance/withdraw", c.Withdraw)

@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/nextlag/gomart/internal/mw/auth"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 // PostOrders обрабатывает запрос на создание нового заказа.
@@ -28,6 +29,7 @@ import (
 // Возвращаемые значения:
 //   - нет.
 func (c *Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
+	log := l.L(c.ctx)
 	// Получаем объект ошибки из UseCase
 	er := c.uc.Do().Err()
 	// Получаем логин пользователя из контекста запроса
@@ -43,27 +45,27 @@ func (c *Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	case err != nil:
 		// Если произошла ошибка при чтении тела запроса, возвращаем ошибку InternalServerError (500)
-		c.log.Error("body reading error", "error PostOrder handler", err.Error())
+		log.Error("body reading error", l.ErrAttr(err))
 		http.Error(w, er.ErrInternalServer.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Вставляем заказ в базу данных
-	err = c.uc.DoInsertOrder(r.Context(), user, order)
+	err = c.uc.DoInsertOrder(c.ctx, user, order)
 	switch {
 	case errors.Is(err, er.ErrOrderFormat):
 		// Если формат заказа неверен, возвращаем ошибку UnprocessableEntity (422)
-		c.log.Error("insert Order 422", "error", err.Error())
+		log.Error("insert Order 422", l.ErrAttr(err))
 		http.Error(w, er.ErrOrderFormat.Error(), http.StatusUnprocessableEntity)
 		return
 	case errors.Is(err, er.ErrAnotherUser):
 		// Если заказ принадлежит другому пользователю, возвращаем ошибку Conflict (409)
-		c.log.Error("insert Order 409", "error", err.Error())
+		log.Error("insert Order 409", l.ErrAttr(err))
 		http.Error(w, er.ErrAnotherUser.Error(), http.StatusConflict)
 		return
 	case errors.Is(err, er.ErrThisUser):
 		// Если заказ успешно создан и принадлежит текущему пользователю, возвращаем статус OK (200)
-		c.log.Error("insert Order 200", "error", err.Error())
+		log.Error("insert Order 200", l.ErrAttr(err))
 		http.Error(w, er.ErrThisUser.Error(), http.StatusOK)
 		return
 	default:
@@ -72,7 +74,7 @@ func (c *Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Логируем успешное получение заказа
-	c.log.Info("order received", "user", user, "order", order)
+	log.Info("order received", "user", user, "order", order)
 	o := fmt.Sprintf("order number: %s\n", order)
 	w.Write([]byte(o))
 }

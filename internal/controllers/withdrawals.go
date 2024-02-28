@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/nextlag/gomart/internal/mw/auth"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 // Withdrawals обрабатывает запрос на получение истории списаний средств пользователя.
@@ -22,22 +23,23 @@ import (
 // Возвращаемые значения:
 //   - нет.
 func (c *Controller) Withdrawals(w http.ResponseWriter, r *http.Request) {
+	log := l.L(c.ctx)
 	// Получаем объект ошибки из UseCase
 	er := c.uc.Do().Err()
 	// Получаем логин пользователя из контекста
 	user, _ := r.Context().Value(auth.LoginKey).(string)
 
 	// Получаем историю списаний средств пользователя из UseCase
-	result, err := c.uc.DoGetWithdrawals(r.Context(), user)
+	result, err := c.uc.DoGetWithdrawals(c.ctx, user)
 	switch {
 	case errors.Is(err, er.ErrNoRows):
 		// Если история списаний пуста, возвращаем статус NoContent (204)
-		c.log.Error("withdrawals handler", "error no rows", err.Error())
+		log.Error("withdrawals handler", l.ErrAttr(err))
 		http.Error(w, "there is no write off", http.StatusNoContent)
 		return
 	case err != nil:
 		// Если произошла ошибка при получении истории списаний, возвращаем ошибку InternalServerError (500)
-		c.log.Error("withdrawals handler", "error", err.Error())
+		log.Error("withdrawals handler", l.ErrAttr(err))
 		http.Error(w, er.ErrInternalServer.Error(), http.StatusInternalServerError)
 		return
 	}

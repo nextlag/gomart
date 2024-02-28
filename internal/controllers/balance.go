@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/nextlag/gomart/internal/mw/auth"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 type userBalance struct {
@@ -27,13 +28,14 @@ type userBalance struct {
 // Возвращаемые значения:
 //   - нет.
 func (c *Controller) Balance(w http.ResponseWriter, r *http.Request) {
+	log := l.L(c.ctx)
 	// Получаем логин пользователя из контекста запроса
 	login, _ := r.Context().Value(auth.LoginKey).(string)
 	// Получаем текущий баланс и сумму снятых средств пользователя из UseCase
-	balance, withdrawn, err := c.uc.DoGetBalance(r.Context(), login)
+	balance, withdrawn, err := c.uc.DoGetBalance(c.ctx, login)
 	if err != nil {
 		// Если произошла ошибка при получении баланса, логируем её и возвращаем ошибку InternalServerError
-		c.log.Error("Balance handler", "balance", balance, "withdrawn", withdrawn, "error", err.Error())
+		log.Error("Balance handler", "balance", balance, "withdrawn", withdrawn, l.ErrAttr(err))
 		http.Error(w, "error get balance", http.StatusInternalServerError)
 		return
 	}
@@ -52,7 +54,7 @@ func (c *Controller) Balance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Логируем успешное получение баланса
-	c.log.Info("GetBalance handler", "balance", balance, "withdrawn", withdrawn)
+	log.Info("GetBalance handler", "balance", balance, "withdrawn", withdrawn)
 
 	// Устанавливаем заголовок Content-Type и код статуса OK (200) в ответе
 	w.Header().Set("Content-Type", "application/json")

@@ -17,7 +17,7 @@ import (
 	"github.com/nextlag/gomart/internal/controllers"
 	"github.com/nextlag/gomart/internal/repository/psql"
 	"github.com/nextlag/gomart/internal/usecase"
-	"github.com/nextlag/gomart/pkg/logger/slogpretty"
+	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
 func setupServer(router http.Handler) *http.Server {
@@ -31,25 +31,28 @@ func main() {
 	if err := config.MakeConfig(); err != nil {
 		stdLog.Fatal(err)
 	}
+	ctx, cansel := context.WithCancel(context.Background())
+	defer cansel()
+	ctx = l.ContextWithLogger(ctx, l.LoggerNew(config.Cfg.ProjectRoot))
 
 	var (
-		log = slogpretty.SetupLogger(config.Cfg.ProjectRoot)
+		log = l.L(ctx)
 		cfg = config.Cfg
 	)
 
 	log.Debug("initialized flags",
-		slog.String("-a", cfg.Host),
-		slog.String("-d", cfg.DSN),
-		slog.String("-k", cfg.SecretToken),
-		slog.String("-l", cfg.LogLevel.String()),
-		slog.String("-r", cfg.Accrual),
-		slog.String("-p", cfg.ProjectRoot),
+		l.StringAttr("-a", cfg.Host),
+		l.StringAttr("-d", cfg.DSN),
+		l.StringAttr("-k", cfg.SecretToken),
+		l.StringAttr("-l", cfg.LogLevel.String()),
+		l.StringAttr("-r", cfg.Accrual),
+		l.StringAttr("-p", cfg.ProjectRoot),
 	)
 
 	// init repository
-	db, err := psql.New(cfg.DSN, log)
+	db, err := psql.New(ctx, cfg.DSN)
 	if err != nil {
-		log.Error("failed to connect in database", "error main", err.Error())
+		log.Error("failed to connect in database", l.ErrAttr(err))
 		os.Exit(1)
 	}
 	defer db.Close()
@@ -58,7 +61,7 @@ func main() {
 	uc := usecase.New(db, cfg)
 
 	// init controllers
-	controller := controllers.New(uc, log)
+	controller := controllers.New(ctx, uc)
 	r := chi.NewRouter()
 	r.Mount("/", controller.Router(r))
 
@@ -77,8 +80,8 @@ func main() {
 
 	go func() {
 		defer wg.Done()
-		if err = db.Sync(stop); err != nil {
-			log.Error("db.Sync()", "error", err.Error())
+		if err = db.Sync(ctx, stop); err != nil {
+			log.Error("db.Sync()", l.ErrAttr(err))
 			sigs <- os.Interrupt
 			return
 		}
@@ -87,7 +90,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 		if err = srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Error("failed to start server", "error", err.Error())
+			log.Error("failed to start server", l.ErrAttr(err))
 			sigs <- os.Interrupt
 			return
 		}
@@ -98,10 +101,8 @@ func main() {
 
 	// Закрытие канала stop и остановка http-сервера
 	close(stop)
-	// TODO
-	ctx := context.TODO()
 	if err = srv.Shutdown(ctx); err != nil {
-		log.Error("server shutdown error", "error", err.Error())
+		log.Error("server shutdown error", l.ErrAttr(err))
 	}
 
 	// Ожидание завершения работы горутин
