@@ -19,12 +19,10 @@ import (
 
 const tick = time.Second * 1
 
-// Withdrawals structure designed to return data to the client about orders with removed bonuses.
-type Withdrawals struct {
-	Order string    `json:"order"`
-	Sum   float32   `json:"sum"`
-	Time  time.Time `json:"processed_at"`
-}
+const insertUser = `
+	INSERT INTO "users" (login, password, balance, withdrawn)
+	VALUES ($1, $2, 0, 0) RETURNING login, password, balance, withdrawn
+`
 
 // Register регистрирует нового пользователя с предоставленным логином и паролем.
 // Метод начинает транзакцию с базой данных, создает нового пользователя с указанными
@@ -40,37 +38,6 @@ type Withdrawals struct {
 //
 //   - error: если произошла ошибка во время выполнения запроса или транзакции,
 //     возвращается ошибка, в противном случае nil.
-//
-//     func (uc *UseCase) Register(ctx context.Context, login string, password string) error {
-//     user := &entity.User{
-//     Login:    login,
-//     Password: password,
-//     }
-//     tx, err := uc.DB.BeginTx(ctx, nil)
-//     if err != nil {
-//     return fmt.Errorf("error beginning transaction Register method: %v", err)
-//     }
-//     defer tx.Rollback() // Откатить транзакцию в случае ошибки
-//     db := bun.NewDB(uc.DB, pgdialect.New())
-//
-//     _, err = db.NewInsert().
-//     Model(user).
-//     Exec(ctx)
-//
-//     if err != nil {
-//     return err
-//     }
-//     // Завершить транзакцию
-//     if err = tx.Commit(); err != nil {
-//     return fmt.Errorf("error committing transaction Register method: %v", err)
-//     }
-//     return nil
-//     }
-const insertUser = `
-	INSERT INTO "users" (login, password, balance, withdrawn)
-	VALUES ($1, $2, 0, 0) RETURNING login, password, balance, withdrawn
-`
-
 func (uc *UseCase) Register(ctx context.Context, login, password string) error {
 	var eUsers entity.User
 
@@ -106,6 +73,12 @@ func (uc *UseCase) Register(ctx context.Context, login, password string) error {
 	return nil
 }
 
+const selectUser = `
+	SELECT login, password, balance, withdrawn
+	FROM users
+	WHERE login = $1 AND password = $2
+`
+
 // Auth выполняет аутентификацию пользователя по указанному логину и паролю.
 // Метод выполняет запрос к базе данных для поиска пользователя с указанными
 // учетными данными. Если пользователь существует и его учетные данные совпадают
@@ -123,18 +96,17 @@ func (uc *UseCase) Register(ctx context.Context, login, password string) error {
 func (uc *UseCase) Auth(ctx context.Context, login, password string) error {
 	var user entity.User
 
-	db := bun.NewDB(uc.DB, pgdialect.New())
-
-	err := db.NewSelect().
-		Model(&user).
-		Where("login = ? and password = ?", login, password).
-		Scan(ctx)
-
+	err := uc.DB.QueryRowContext(ctx, selectUser, login, password).Scan(
+		&user.Login,
+		&user.Password,
+		&user.Balance,
+		&user.Withdrawn,
+	)
 	if err != nil {
-		return err
+		return err // Пользователь с таким логином и паролем не найден
 	}
 
-	return nil
+	return nil // Пользователь успешно аутентифицирован
 }
 
 // InsertOrder осуществляет вставку нового заказа в базу данных.
@@ -392,6 +364,13 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 		return fmt.Errorf("error committing transaction Debit method: %v", err)
 	}
 	return nil
+}
+
+// Withdrawals structure designed to return data to the client about orders with removed bonuses.
+type Withdrawals struct {
+	Order string    `json:"order"`
+	Sum   float32   `json:"sum"`
+	Time  time.Time `json:"processed_at"`
 }
 
 // GetWithdrawals возвращает список снятий бонусов пользователя в формате JSON.
