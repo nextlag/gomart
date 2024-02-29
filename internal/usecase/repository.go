@@ -393,7 +393,7 @@ type Withdrawals struct {
 func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, error) {
 	var allWithdrawals []Withdrawals
 
-	rows, err := uc.DB.QueryContext(ctx, selectWithdrawals, user)
+	rows, err := uc.DB.QueryContext(ctx, selectOrderWithdrawals, user)
 	if err != nil {
 		return nil, err
 	}
