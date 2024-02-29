@@ -3,7 +3,7 @@ package entity
 
 import "time"
 
-// User displays information about registered users
+// User структура, предназначенная для вставки данных в таблицу пользователей
 type User struct {
 	Login     string  `json:"login"`
 	Password  string  `json:"password"`
@@ -11,7 +11,7 @@ type User struct {
 	Withdrawn float32 `json:"withdrawn"`
 }
 
-// Order structure intended for inserting data into the orders table.
+// Order структура, предназначенная для вставки данных в таблицу заказов.
 type Order struct {
 	UserName         string    `json:"user_name,omitempty"`
 	Order            string    `json:"number"`

@@ -35,7 +35,7 @@ func (c *Controller) Balance(w http.ResponseWriter, r *http.Request) {
 	balance, withdrawn, err := c.uc.DoGetBalance(c.ctx, login)
 	if err != nil {
 		// Если произошла ошибка при получении баланса, логируем её и возвращаем ошибку InternalServerError
-		log.Error("Balance handler", "balance", balance, "withdrawn", withdrawn, l.ErrAttr(err))
+		log.Error("balance handler", "balance", balance, "withdrawn", withdrawn, l.ErrAttr(err))
 		http.Error(w, "error get balance", http.StatusInternalServerError)
 		return
 	}

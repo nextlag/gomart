@@ -62,11 +62,11 @@ func (c *Controller) Register(w http.ResponseWriter, r *http.Request) {
 		isPGError := errors.As(err, &pqErr)
 		switch {
 		case isPGError && pqErr.Code == "23505":
-			log.Error("Duplicate login", l.ErrAttr(err))
+			log.Error("duplicate login", l.ErrAttr(err))
 			// Если дубликат логина - возвращаем конфликт
 			http.Error(w, er.ErrNoLogin.Error(), http.StatusConflict)
 		default:
-			log.Error("Register error", l.ErrAttr(err))
+			log.Error("register error", l.ErrAttr(err))
 			// В противном случае возвращаем внутреннюю ошибку сервера
 			http.Error(w, er.ErrInternalServer.Error(), http.StatusInternalServerError)
 		}
