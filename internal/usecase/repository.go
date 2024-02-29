@@ -393,7 +393,7 @@ type Withdrawals struct {
 func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, error) {
 	var allWithdrawals []Withdrawals
 
-	rows, err := uc.DB.QueryContext(ctx, selectOrderWithdrawals, user)
+	rows, err := uc.DB.QueryContext(ctx, selectWithdrawals, user)
 	if err != nil {
 		return nil, err
 	}
@@ -405,7 +405,7 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 		var order string
 		var sum float32
 		var time time.Time
-		if err = rows.Scan(&order, &sum, &time); err != nil {
+		if err := rows.Scan(&order, &sum, &time); err != nil {
 			return nil, err
 		}
 
@@ -414,6 +414,11 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 			Sum:   sum,
 			Time:  time,
 		})
+	}
+
+	// Проверка на наличие ошибок после завершения итерации по строкам
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 
 	if noRows {
