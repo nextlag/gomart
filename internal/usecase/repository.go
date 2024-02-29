@@ -3,6 +3,7 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -109,6 +110,19 @@ func (uc *UseCase) Auth(ctx context.Context, login, password string) error {
 	return nil // Пользователь успешно аутентифицирован
 }
 
+const (
+	selectOrder = `
+		SELECT user_name, "order", status, accrual, uploaded_at, bonuses_withdrawn
+		FROM orders
+		WHERE "order" = $1
+`
+	insertOrder = `
+		INSERT INTO orders (user_name, "order", status, accrual, uploaded_at, bonuses_withdrawn) 
+		VALUES ($1, $2, 'NEW', 0, $3, 0) 
+		RETURNING user_name, "order", status, accrual, uploaded_at, bonuses_withdrawn
+`
+)
+
 // InsertOrder осуществляет вставку нового заказа в базу данных.
 // Метод принимает контекст ctx типа context.Context, имя пользователя user и описание заказа order.
 // Контекст ctx используется для управления временем жизни операции и для передачи значения времени выполнения, которое должно учитываться при выполнении операции.
@@ -122,23 +136,13 @@ func (uc *UseCase) Auth(ctx context.Context, login, password string) error {
 //   - ошибку при начале транзакции.
 //   - ошибку при выполнении запроса к базе данных.
 //   - ошибку при коммите транзакции.
-func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) error {
-	// Получаем текущее время.
+func (uc *UseCase) InsertOrder(ctx context.Context, user, order string) error {
 	now := time.Now()
-
-	// Инициализируем переменную для отзыва бонусов.
-	bonusesWithdrawn := float32(0)
-
-	// Создаем объект заказа.
 	userOrder := &entity.Order{
-		UserName:         user,
-		Order:            order,
-		Status:           "NEW",
-		UploadedAt:       now,
-		BonusesWithdrawn: bonusesWithdrawn,
+		UserName:   user,
+		Order:      order,
+		UploadedAt: now,
 	}
-
-	// Проверяем валидность заказа.
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
 		return uc.Err().ErrOrderFormat
@@ -147,46 +151,65 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 	// Начинаем транзакцию.
 	tx, err := uc.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("error beginning transaction InsertOrder method: %v", err)
+		l.L(ctx).Error("begin transaction", l.ErrAttr(err))
+		return err
 	}
-	defer tx.Rollback()
 
-	// Создаем новый объект для работы с базой данных.
-	db := bun.NewDB(uc.DB, pgdialect.New())
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			err = fmt.Errorf("commit transaction: %v", err)
+		}
+	}()
 
 	// Проверяем существует ли уже заказ с таким же описанием.
-	var checkOrder entity.Order
-	err = db.NewSelect().
-		Model(&checkOrder).
-		Where(`"order" = ?`, order).
-		Scan(ctx)
-	if errors.Is(err, nil) {
+	var existingOrder entity.Order
+	err = uc.DB.QueryRowContext(ctx, selectOrder, order).Scan(
+		&existingOrder.UserName,
+		&existingOrder.Order,
+		&existingOrder.Status,
+		&existingOrder.Accrual,
+		&existingOrder.UploadedAt,
+		&existingOrder.BonusesWithdrawn,
+	)
+	if err == nil {
 		// Если заказ существует, проверяем его принадлежность пользователю.
-		if checkOrder.UserName == user {
+		if existingOrder.UserName == user {
 			// Заказ принадлежит текущему пользователю.
 			return uc.Err().ErrThisUser
 		}
 		// Заказ принадлежит другому пользователю.
 		return uc.Err().ErrAnotherUser
-	}
-
-	// Заказ не существует, вставляем его в базу данных.
-	_, err = db.NewInsert().
-		Model(userOrder).
-		Set("uploaded_at = ?", now.Format(time.RFC3339)).
-		Exec(ctx)
-	if err != nil {
+	} else if err != sql.ErrNoRows {
 		return err
 	}
 
-	// Коммит транзакции.
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("error committing transaction InsertOrder method: %v", err)
+	// Заказ не существует, вставляем его в базу данных.
+	err = uc.DB.QueryRowContext(ctx, insertOrder, user, order, now).Scan(
+		&userOrder.UserName,
+		&userOrder.Order,
+		&userOrder.Status,
+		&userOrder.Accrual,
+		&userOrder.UploadedAt,
+		&userOrder.BonusesWithdrawn,
+	)
+	if err != nil {
+		return err
 	}
-
-	// Возвращаем nil в случае успешного выполнения операции.
 	return nil
 }
+
+const selectOrders = `
+		SELECT "order", status, accrual, uploaded_at
+		FROM orders
+		WHERE user_name = $1
+		ORDER BY uploaded_at ASC
+	`
 
 // GetOrders возвращает заказы пользователя в формате JSON.
 // Метод принимает контекст ctx типа context.Context и имя пользователя user.
@@ -200,46 +223,36 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user string, order string) e
 //
 // Если произошла ошибка при выполнении запроса к базе данных или при преобразовании результатов в JSON, метод возвращает ошибку.
 func (uc *UseCase) GetOrders(ctx context.Context, user string) ([]byte, error) {
-	var (
-		allOrders []entity.Order
-		order     entity.Order
-	)
-	db := bun.NewDB(uc.DB, pgdialect.New())
+	var allOrders []entity.Order
 
-	rows, err := db.NewSelect().
-		Model(&order).
-		Where("user_name = ?", user).
-		Order("uploaded_at ASC").
-		Rows(ctx)
+	// Выполняем запрос к базе данных.
+	rows, err := uc.DB.QueryContext(ctx, selectOrders, user)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса: %v", err)
 	}
-
-	err = rows.Err()
-	if err != nil {
-		return nil, err
-	}
 	defer rows.Close()
 
+	// Обрабатываем результаты запроса.
 	for rows.Next() {
-		var en entity.Order
-		err = rows.Scan(&en.UserName, &en.Order, &en.Status, &en.Accrual, &en.UploadedAt, &en.BonusesWithdrawn)
-		if err != nil {
+		var order entity.Order
+		if err = rows.Scan(&order.Order, &order.Status, &order.Accrual, &order.UploadedAt); err != nil {
 			return nil, err
 		}
-		allOrders = append(allOrders, entity.Order{
-			Order:      en.Order,
-			Status:     en.Status,
-			Accrual:    en.Accrual,
-			UploadedAt: en.UploadedAt,
-		})
+		allOrders = append(allOrders, order)
 	}
 
+	// Проверяем наличие ошибок после завершения перебора результатов.
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Преобразуем полученные заказы в JSON.
 	result, err := json.Marshal(allOrders)
 	if err != nil {
 		return nil, err
 	}
 
+	// Возвращаем JSON-представление заказов.
 	log.Print(string(result))
 	return result, nil
 }

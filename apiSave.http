@@ -27,9 +27,9 @@ Host: localhost:8080
 Content-Type: text/plain
 
 #12345678903
-#31722088874
+#2377225624
 #88070083642064
-2377225624
+31722088874
 
 ### POST списание бонусов
 POST  http://localhost:8080/api/user/balance/withdraw
@@ -45,7 +45,7 @@ Content-Type: application/json
 ### Get orders
 GET http://localhost:8080/api/user/orders
 Host: localhost:8080
-Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG8yIn0.PStmprmbB19P0au0oncXvSu0O06-J9oJK06QoHRvhsc
+Cookie: ErrAuth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InNvbG80In0.ijir-6iucB7TGiH8Qd5Rzk3r35aMfeL2Z__mVi1qD9Q
 
 ### Get balance
 GET http://localhost:8080/api/user/balance
