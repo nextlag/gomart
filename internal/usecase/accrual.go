@@ -210,27 +210,28 @@ func (uc *UseCase) Sync(ctx context.Context, stop chan struct{}) error {
 // функция возвращает ошибку.
 func (uc *UseCase) UpdateStatus(ctx context.Context, orderAccrual OrderResponse, login string, tx bun.Tx) error {
 	log := l.L(ctx)
-	orderModel := &entity.Order{}
-	userModel := &entity.User{}
 
-	// Используем tx для создания запроса обновления
-	_, err := tx.NewUpdate().
-		Model(orderModel).
-		Set("status = ?, accrual = ?", orderAccrual.Status, orderAccrual.Accrual).
-		Where(`"order" = ?`, orderAccrual.Order).
-		Exec(ctx)
+	// Обновление статуса заказа и начисления в таблице заказов
+	_, err := tx.ExecContext(ctx, `
+		UPDATE orders
+		SET status = $1, accrual = $2
+		WHERE "order" = $3
+	`, orderAccrual.Status, orderAccrual.Accrual, orderAccrual.Order)
 	if err != nil {
+		log.Error("error updating order status and accrual", l.ErrAttr(err))
 		return err
 	}
 
-	_, err = tx.NewUpdate().
-		Model(userModel).
-		Set("balance = balance + ?", orderAccrual.Accrual).
-		Where(`login = ?`, login).
-		Exec(ctx)
+	// Обновление баланса пользователя в таблице пользователей
+	_, err = tx.ExecContext(ctx, `
+		UPDATE users
+		SET balance = balance + $1
+		WHERE login = $2
+	`, orderAccrual.Accrual, login)
 	if err != nil {
-		log.Error("error making an update request in user table", l.ErrAttr(err))
+		log.Error("error updating user balance", l.ErrAttr(err))
 		return err
 	}
+
 	return nil
 }
