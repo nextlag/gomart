@@ -20,10 +20,49 @@ import (
 
 const tick = time.Second * 1
 
-const insertUser = `
-	INSERT INTO "users" (login, password, balance, withdrawn)
-	VALUES ($1, $2, 0, 0) RETURNING login, password, balance, withdrawn
-`
+const (
+	insertUser = `
+		INSERT INTO "users" (login, password, balance, withdrawn)
+		VALUES ($1, $2, 0, 0) RETURNING login, password, balance, withdrawn
+	`
+	updateUser = `
+		UPDATE users
+		SET balance = balance - $1, withdrawn = withdrawn + $1
+		WHERE login = $2
+	`
+	selectUser = `
+		SELECT login, password, balance, withdrawn
+		FROM users
+		WHERE login = $1 AND password = $2
+	`
+	selectOrder = `
+		SELECT user_name, "order", status, accrual, uploaded_at, bonuses_withdrawn
+		FROM orders
+		WHERE "order" = $1
+	`
+	insertOrder = `
+		INSERT INTO orders (user_name, "order", status, accrual, uploaded_at, bonuses_withdrawn) 
+		VALUES ($1, $2, 'NEW', 0, $3, 0) 
+		RETURNING user_name, "order", status, accrual, uploaded_at, bonuses_withdrawn
+	`
+	insertOrderWithdrawn = `
+		INSERT INTO "orders" (user_name, "order", status, accrual, uploaded_at, bonuses_withdrawn)
+		VALUES ($1, $2, 'NEW', 0, $3, $4)
+	`
+	selectOrders = `
+		SELECT "order", status, accrual, uploaded_at
+		FROM orders
+		WHERE user_name = $1
+		ORDER BY uploaded_at ASC
+	`
+
+	selectOrderWithdrawals = `
+		SELECT "order", bonuses_withdrawn, uploaded_at
+		FROM orders
+		WHERE user_name = $1 AND bonuses_withdrawn != 0
+		ORDER BY uploaded_at ASC
+	`
+)
 
 // Register регистрирует нового пользователя с предоставленным логином и паролем.
 // Метод начинает транзакцию с базой данных, создает нового пользователя с указанными
@@ -74,12 +113,6 @@ func (uc *UseCase) Register(ctx context.Context, login, password string) error {
 	return nil
 }
 
-const selectUser = `
-	SELECT login, password, balance, withdrawn
-	FROM users
-	WHERE login = $1 AND password = $2
-`
-
 // Auth выполняет аутентификацию пользователя по указанному логину и паролю.
 // Метод выполняет запрос к базе данных для поиска пользователя с указанными
 // учетными данными. Если пользователь существует и его учетные данные совпадают
@@ -109,19 +142,6 @@ func (uc *UseCase) Auth(ctx context.Context, login, password string) error {
 
 	return nil // Пользователь успешно аутентифицирован
 }
-
-const (
-	selectOrder = `
-		SELECT user_name, "order", status, accrual, uploaded_at, bonuses_withdrawn
-		FROM orders
-		WHERE "order" = $1
-`
-	insertOrder = `
-		INSERT INTO orders (user_name, "order", status, accrual, uploaded_at, bonuses_withdrawn) 
-		VALUES ($1, $2, 'NEW', 0, $3, 0) 
-		RETURNING user_name, "order", status, accrual, uploaded_at, bonuses_withdrawn
-`
-)
 
 // InsertOrder осуществляет вставку нового заказа в базу данных.
 // Метод принимает контекст ctx типа context.Context, имя пользователя user и описание заказа order.
@@ -203,13 +223,6 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user, order string) error {
 	}
 	return nil
 }
-
-const selectOrders = `
-		SELECT "order", status, accrual, uploaded_at
-		FROM orders
-		WHERE user_name = $1
-		ORDER BY uploaded_at ASC
-	`
 
 // GetOrders возвращает заказы пользователя в формате JSON.
 // Метод принимает контекст ctx типа context.Context и имя пользователя user.
@@ -302,7 +315,7 @@ func (uc *UseCase) GetBalance(ctx context.Context, login string) (float32, float
 //   - ErrCommittingTransaction: ошибка при коммите транзакции.
 //   - ErrAnotherUser: заказ существует и принадлежит другому пользователю.
 //   - ErrThisUser: заказ существует и принадлежит текущему пользователю.
-func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum float32) error {
+func (uc *UseCase) Debit(ctx context.Context, user, order string, sum float32) error {
 	// Проверка корректности номера заказа
 	validOrder := luna.CheckValidOrder(order)
 	if !validOrder {
@@ -315,8 +328,9 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 	if err != nil {
 		return err
 	}
+
+	// Если на счету пользователя недостаточно средств, возвращает ошибку
 	if balance < sum {
-		// Если на счету пользователя недостаточно средств, возвращает ошибку
 		return uc.Err().ErrNoBalance
 	}
 
@@ -326,53 +340,35 @@ func (uc *UseCase) Debit(ctx context.Context, user string, order string, sum flo
 	}
 	defer tx.Rollback()
 
-	// Инициализация подключения к базе данных
-	db := bun.NewDB(uc.DB, pgdialect.New())
-
 	// Проверка существования заказа в базе данных
-	checkOrder := entity.Order{}
-	now := time.Now()
+	var existingOrder entity.Order
+	err = uc.DB.QueryRowContext(ctx, selectOrder, order).Scan(&existingOrder.UserName, &existingOrder.Order)
 
-	err = db.NewSelect().
-		Model(checkOrder).
-		Where(`"order" = ?`, order).
-		Scan(ctx)
-	if !errors.Is(err, nil) {
-		// Заказ не существует, добавляем новый заказ в базу данных
-		_, err := db.NewInsert().
-			Model(&entity.Order{
-				UserName:         user,
-				Order:            order,
-				UploadedAt:       now,
-				Status:           "NEW",
-				BonusesWithdrawn: sum,
-			}).
-			Set("uploaded_at = ?", now.Format(time.RFC3339)).
-			Exec(ctx)
-		if !errors.Is(err, nil) {
-			return err
-		}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("error checking order existence: %v", err)
 	}
 
-	// Проверка принадлежности заказа текущему пользователю или другому
-	if checkOrder.UserName != user && checkOrder.Order == order {
+	if existingOrder.UserName != user && existingOrder.Order == order {
 		// Если заказ существует и принадлежит другому пользователю, возвращает ErrAnotherUser.
 		return uc.Err().ErrAnotherUser
-	} else if checkOrder.UserName == user && checkOrder.Order == order {
+	} else if existingOrder.UserName == user && existingOrder.Order == order {
 		// Если заказ существует и принадлежит текущему пользователю, возвращает ErrThisUser.
 		return uc.Err().ErrThisUser
 	}
 
-	// Если заказ существует, обновляет баланс пользователя и добавляет запись о списании в базу данных.
-	_, err = db.NewUpdate().
-		TableExpr("users").
-		Set("balance = ?", balance-sum).
-		Set("withdrawn = withdrawn + ?", sum).
-		Where("login = ?", user).
-		Exec(ctx)
-	if !errors.Is(err, nil) {
-		return err
+	// Обновляем баланс пользователя и добавляем запись о списании в базу данных.
+	now := time.Now()
+	_, err = uc.DB.ExecContext(ctx, updateUser, sum, user)
+	if err != nil {
+		return fmt.Errorf("error updating user balance: %v", err)
 	}
+
+	_, err = uc.DB.ExecContext(ctx, insertOrderWithdrawn, user, order, now, sum)
+
+	if err != nil {
+		return fmt.Errorf("error inserting order: %v", err)
+	}
+
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("error committing transaction Debit method: %v", err)
 	}
@@ -395,44 +391,28 @@ type Withdrawals struct {
 // В случае успешного выполнения операции, метод возвращает список снятий бонусов пользователя в формате JSON и nil.
 // В случае любой другой ошибки, возникшей при выполнении запроса к базе данных или при преобразовании результатов в JSON, метод возвращает ошибку.
 func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, error) {
-	var (
-		allOrders []Withdrawals
-		order     entity.Order
-	)
+	var allWithdrawals []Withdrawals
 
-	// Инициализация подключения к базе данных
-	db := bun.NewDB(uc.DB, pgdialect.New())
-
-	// Выборка всех заказов пользователя, где bonuses_withdrawn != 0
-	rows, err := db.NewSelect().
-		Model(&order).
-		Where("user_name = ? and bonuses_withdrawn != 0", user).
-		Order("uploaded_at ASC").
-		Rows(ctx)
-	rows.Err()
-
+	rows, err := uc.DB.QueryContext(ctx, selectOrderWithdrawals, user)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
+
 	noRows := true
 	for rows.Next() {
 		noRows = false
-		var orderRow entity.Order
-		if err = rows.Scan(
-			&orderRow.UserName,
-			&orderRow.Order,
-			&orderRow.Status,
-			&orderRow.Accrual,
-			&orderRow.UploadedAt,
-			&orderRow.BonusesWithdrawn,
-		); err != nil {
+		var order string
+		var sum float32
+		var time time.Time
+		if err = rows.Scan(&order, &sum, &time); err != nil {
 			return nil, err
 		}
 
-		allOrders = append(allOrders, Withdrawals{
-			Order: orderRow.Order,
-			Sum:   orderRow.BonusesWithdrawn,
-			Time:  orderRow.UploadedAt,
+		allWithdrawals = append(allWithdrawals, Withdrawals{
+			Order: order,
+			Sum:   sum,
+			Time:  time,
 		})
 	}
 
@@ -440,7 +420,7 @@ func (uc *UseCase) GetWithdrawals(ctx context.Context, user string) ([]byte, err
 		return nil, ErrNoRows
 	}
 
-	result, err := json.Marshal(allOrders)
+	result, err := json.Marshal(allWithdrawals)
 	if err != nil {
 		return nil, err
 	}
