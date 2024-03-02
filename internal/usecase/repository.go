@@ -79,26 +79,33 @@ const (
 //   - error: если произошла ошибка во время выполнения запроса или транзакции,
 //     возвращается ошибка, в противном случае nil.
 func (uc *UseCase) Register(ctx context.Context, login, password string) error {
+	// Создание переменной для хранения данных о пользователе
 	var eUsers entity.User
 
+	// Начало транзакции
 	tx, err := uc.DB.BeginTx(ctx, nil)
 	if err != nil {
 		l.L(ctx).Error("begin transaction", l.ErrAttr(err))
 		return err
 	}
 
+	// Отложенный вызов функции, выполняющей откат транзакции в случае ошибки
 	defer func() {
 		if err != nil {
+			// Если произошла ошибка, откатываем транзакцию
 			tx.Rollback()
 			return
 		}
 
+		// Если все прошло успешно, фиксируем транзакцию
 		err = tx.Commit()
 		if err != nil {
+			// Если при фиксации транзакции произошла ошибка, создаем ошибку и возвращаем ее
 			err = fmt.Errorf("commit transaction: %v", err)
 		}
 	}()
 
+	// Вставляем данные пользователя в базу данных
 	err = uc.DB.QueryRowContext(ctx, insertUser, login, password).Scan(
 		&eUsers.Login,
 		&eUsers.Password,
@@ -107,9 +114,12 @@ func (uc *UseCase) Register(ctx context.Context, login, password string) error {
 	)
 
 	if err != nil {
+		// Логируем ошибку вставки данных и возвращаем ее
 		l.L(ctx).Error("error pushing data in table users", l.ErrAttr(err))
 		return err
 	}
+
+	// Возвращаем nil, если все прошло успешно
 	return nil
 }
 

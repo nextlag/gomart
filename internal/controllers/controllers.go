@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/nextlag/gomart/internal/config"
 	"github.com/nextlag/gomart/internal/mw/auth"
 	"github.com/nextlag/gomart/internal/mw/gzip"
 	"github.com/nextlag/gomart/internal/mw/logger"
@@ -37,7 +38,7 @@ func New(ctx context.Context, uc UseCase) *Controller {
 	return &Controller{ctx: ctx, uc: uc}
 }
 
-// Router настраивает маршруты для обработчика запросов.
+// NewServer настраивает маршруты для обработчика запросов.
 //
 // Этот метод настраивает маршруты для обработки HTTP-запросов с использованием роутера chi.
 // Он устанавливает несколько middleware для обработки запросов, включая логирование, сжатие и восстановление
@@ -48,7 +49,7 @@ func New(ctx context.Context, uc UseCase) *Controller {
 //
 // Возвращаемые значения:
 //   - *chi.Mux - роутер с настроенными маршрутами.
-func (c *Controller) Router(handler *chi.Mux) *chi.Mux {
+func (c *Controller) NewServer(handler *chi.Mux) *http.Server {
 	// Использование middleware для обработки запросов
 	handler.Use(middleware.RequestID)
 	handler.Use(logger.New(c.ctx))
@@ -73,5 +74,8 @@ func (c *Controller) Router(handler *chi.Mux) *chi.Mux {
 		})
 	})
 
-	return handler
+	return &http.Server{
+		Addr:    config.Cfg.Host,
+		Handler: handler,
+	}
 }

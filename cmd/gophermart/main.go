@@ -20,13 +20,6 @@ import (
 	"github.com/nextlag/gomart/pkg/logger/l"
 )
 
-func setupServer(router http.Handler) *http.Server {
-	return &http.Server{
-		Addr:    config.Cfg.Host,
-		Handler: router,
-	}
-}
-
 func main() {
 	if err := config.MakeConfig(); err != nil {
 		stdLog.Fatal(err)
@@ -60,13 +53,12 @@ func main() {
 	// init usecase
 	uc := usecase.New(db, cfg)
 
-	// init controllers
-	controller := controllers.New(ctx, uc)
 	r := chi.NewRouter()
-	r.Mount("/", controller.Router(r))
 
-	// init server
-	srv := setupServer(r)
+	// create new server
+	srv := controllers.New(ctx, uc).NewServer(r)
+	r.Mount("/", srv.Handler)
+
 	log.Info("server starting", slog.String("host", srv.Addr))
 
 	// WaitGroup для ожидания завершения работы горутин
