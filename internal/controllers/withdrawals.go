@@ -30,7 +30,7 @@ func (c *Controller) Withdrawals(w http.ResponseWriter, r *http.Request) {
 	user, _ := r.Context().Value(auth.LoginKey).(string)
 
 	// Получаем историю списаний средств пользователя из UseCase
-	result, err := c.uc.DoGetWithdrawals(c.ctx, user)
+	result, err := c.uc.DoGetWithdrawals(r.Context(), user)
 	switch {
 	case errors.Is(err, er.ErrNoRows):
 		// Если история списаний пуста, возвращаем статус NoContent (204)

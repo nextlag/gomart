@@ -28,7 +28,7 @@ func (c *Controller) GetOrders(w http.ResponseWriter, r *http.Request) {
 	er := c.uc.Do().Err()
 
 	// Получаем список заказов пользователя из UseCase
-	result, err := c.uc.DoGetOrders(c.ctx, user)
+	result, err := c.uc.DoGetOrders(r.Context(), user)
 	if err != nil {
 		// Если произошла ошибка при получении списка заказов, логируем её и возвращаем ошибку InternalServerError
 		log.Error("handler GetOrders", l.ErrAttr(err))

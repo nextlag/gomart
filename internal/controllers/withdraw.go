@@ -46,7 +46,7 @@ func (c *Controller) Withdraw(w http.ResponseWriter, r *http.Request) {
 	log.Debug("debet request", "user", user, "order", request.Order, "sum", request.Sum)
 
 	// Вызываем метод DoDebit UseCase для списания средств
-	err := c.uc.Do().DoDebit(c.ctx, user, request.Order, request.Sum)
+	err := c.uc.Do().DoDebit(r.Context(), user, request.Order, request.Sum)
 	switch {
 	case errors.Is(err, er.ErrNoBalance):
 		// Если недостаточно средств на счете, возвращаем ошибку PaymentRequired (402)

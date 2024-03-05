@@ -109,8 +109,6 @@ func (uc *UseCase) Sync(ctx context.Context, stop chan struct{}) error {
 	log := l.L(ctx)
 	ticker := time.NewTicker(tick)
 	defer ticker.Stop()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	for {
 		select {
@@ -163,7 +161,6 @@ func (uc *UseCase) Sync(ctx context.Context, stop chan struct{}) error {
 			for _, unfinishedOrder := range allOrders {
 				select {
 				case <-stop:
-					cancel()
 					return nil // В случае получения сигнала остановки, завершаем выполнение без ошибок
 				default:
 					finishedOrder, err := GetAccrual(ctx, unfinishedOrder, stop)
@@ -187,7 +184,6 @@ func (uc *UseCase) Sync(ctx context.Context, stop chan struct{}) error {
 				continue
 			}
 		case <-stop:
-			cancel()
 			return nil // В случае получения сигнала остановки, завершаем выполнение без ошибок
 		}
 	}

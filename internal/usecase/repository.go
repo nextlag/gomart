@@ -215,7 +215,7 @@ func (uc *UseCase) InsertOrder(ctx context.Context, user, order string) error {
 		}
 		// Заказ принадлежит другому пользователю.
 		return uc.Err().ErrAnotherUser
-	} else if err != sql.ErrNoRows {
+	} else if !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
 

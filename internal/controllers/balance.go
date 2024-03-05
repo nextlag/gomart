@@ -32,7 +32,7 @@ func (c *Controller) Balance(w http.ResponseWriter, r *http.Request) {
 	// Получаем логин пользователя из контекста запроса
 	login, _ := r.Context().Value(auth.LoginKey).(string)
 	// Получаем текущий баланс и сумму снятых средств пользователя из UseCase
-	balance, withdrawn, err := c.uc.DoGetBalance(c.ctx, login)
+	balance, withdrawn, err := c.uc.DoGetBalance(r.Context(), login)
 	if err != nil {
 		// Если произошла ошибка при получении баланса, логируем её и возвращаем ошибку InternalServerError
 		log.Error("balance handler", "balance", balance, "withdrawn", withdrawn, l.ErrAttr(err))

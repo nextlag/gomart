@@ -51,10 +51,10 @@ func (uc *UseCase) GetEntity() *entity.AllEntity {
 }
 
 // UseCase interface methods
-
 func (uc *UseCase) Do() *UseCase {
 	return uc
 }
+
 func (uc *UseCase) DoRegister(ctx context.Context, login, password string, _ *http.Request) error {
 	err := uc.repo.Register(ctx, login, password)
 	return err

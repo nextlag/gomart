@@ -45,7 +45,7 @@ func (c *Controller) Authentication(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Проверяем логин и пароль пользователя
-	if err := c.uc.DoAuth(c.ctx, user.Login, user.Password, r); err != nil {
+	if err := c.uc.DoAuth(r.Context(), user.Login, user.Password, r); err != nil {
 		// Если логин или пароль неверны, возвращаем ошибку Unauthorized
 		log.Error("incorrect login or password", l.ErrAttr(err))
 		http.Error(w, er.ErrUnauthorized.Error(), http.StatusUnauthorized)

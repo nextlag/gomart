@@ -51,7 +51,7 @@ func (c *Controller) PostOrders(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Вставляем заказ в базу данных
-	err = c.uc.DoInsertOrder(c.ctx, user, order)
+	err = c.uc.DoInsertOrder(r.Context(), user, order)
 	switch {
 	case errors.Is(err, er.ErrOrderFormat):
 		// Если формат заказа неверен, возвращаем ошибку UnprocessableEntity (422)
