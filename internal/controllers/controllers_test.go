@@ -92,20 +92,20 @@ func TestRegistrationHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, ctrl, repo, uc := controller(t)
+			_, ctrl, repo, uc := controller(t)
 			repo.EXPECT().Do().Return(uc).Times(2)
 			switch {
 			case tt.name == "Internal server error":
-				repo.EXPECT().DoRegister(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("internal server error")).Times(1)
+				repo.EXPECT().DoRegister(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("internal server error")).Times(1)
 			case tt.name == "Duplicate login":
 				// создаем экземпляр pq.Error
 				err := pq.Error{
 					Message: "pq: duplicate key value violates unique constraint \"users_pkey\"",
 					Code:    "23505",
 				}
-				repo.EXPECT().DoRegister(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(&err).Times(1)
+				repo.EXPECT().DoRegister(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&err).Times(1)
 			default:
-				repo.EXPECT().DoRegister(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+				repo.EXPECT().DoRegister(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 			}
 			r, err := http.NewRequest(http.MethodPost, "/api/user/register", bytes.NewBufferString(tt.body))
 			w := httptest.NewRecorder()
@@ -144,12 +144,12 @@ func TestAuthenticationHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, ctrl, repo, uc := controller(t)
+			_, ctrl, repo, uc := controller(t)
 			repo.EXPECT().Do().Return(uc).Times(2)
 			if tt.name == "NoValid auth" {
-				repo.EXPECT().DoAuth(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("unauthorized")).Times(1)
+				repo.EXPECT().DoAuth(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("unauthorized")).Times(1)
 			}
-			repo.EXPECT().DoAuth(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+			repo.EXPECT().DoAuth(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 			r, err := http.NewRequest(http.MethodPost, "/api/user/login", bytes.NewBufferString(tt.body))
 			w := httptest.NewRecorder()
 			handler := http.HandlerFunc(ctrl.Authentication)

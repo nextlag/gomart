@@ -26,7 +26,6 @@ func main() {
 		stdLog.Fatal(err)
 	}
 	ctx, cansel := context.WithCancel(context.Background())
-	// defer cansel()
 	ctx = l.ContextWithLogger(ctx, l.LoggerNew(config.Cfg.ProjectRoot))
 
 	var (
