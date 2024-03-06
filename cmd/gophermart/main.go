@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -25,7 +26,7 @@ func main() {
 		stdLog.Fatal(err)
 	}
 	ctx, cansel := context.WithCancel(context.Background())
-	defer cansel()
+	// defer cansel()
 	ctx = l.ContextWithLogger(ctx, l.LoggerNew(config.Cfg.ProjectRoot))
 
 	var (
@@ -68,11 +69,9 @@ func main() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	stop := make(chan struct{})
-
 	go func() {
 		defer wg.Done()
-		if err = db.Sync(ctx, stop); err != nil {
+		if err = db.Sync(ctx); err != nil {
 			log.Error("db.Sync()", l.ErrAttr(err))
 			sigs <- os.Interrupt
 			return
@@ -92,8 +91,10 @@ func main() {
 	<-sigs
 
 	// Закрытие канала stop и остановка http-сервера
-	close(stop)
-	if err = srv.Shutdown(ctx); err != nil {
+	cansel()
+	ctxTime, canselShutdown := context.WithTimeout(context.Background(), time.Second*10)
+	defer canselShutdown()
+	if err = srv.Shutdown(ctxTime); err != nil {
 		log.Error("server shutdown error", l.ErrAttr(err))
 	}
 

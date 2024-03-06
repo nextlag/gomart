@@ -47,7 +47,7 @@ type OrderResponse struct {
 // в системе начислений), возвращается ошибка "internal server error in accrual system".
 // Если выполнение функции завершается по сигналу остановки, она возвращает текущее состояние
 // заказа без ошибки.
-func GetAccrual(ctx context.Context, order entity.Order, stop chan struct{}) (OrderResponse, error) {
+func GetAccrual(ctx context.Context, order entity.Order) (OrderResponse, error) {
 	log := l.L(ctx)
 	client := resty.New().SetBaseURL(config.Cfg.Accrual)
 	var orderUpdate OrderResponse
@@ -55,7 +55,7 @@ func GetAccrual(ctx context.Context, order entity.Order, stop chan struct{}) (Or
 	// Выполняем цикл, пока не получим сигнал остановки из канала stop
 	for {
 		select {
-		case <-stop:
+		case <-ctx.Done():
 			return orderUpdate, nil
 		default:
 			resp, err := client.R().
@@ -105,7 +105,7 @@ func GetAccrual(ctx context.Context, order entity.Order, stop chan struct{}) (Or
 // Затем она запускает цикл обработки этих заказов, вызывая функцию GetAccrual для каждого заказа
 // и обновляя статусы заказов в базе данных согласно полученной информации. Функция продолжает
 // работу до получения сигнала остановки из канала stop.
-func (uc *UseCase) Sync(ctx context.Context, stop chan struct{}) error {
+func (uc *UseCase) Sync(ctx context.Context) error {
 	log := l.L(ctx)
 	ticker := time.NewTicker(tick)
 	defer ticker.Stop()
@@ -160,10 +160,10 @@ func (uc *UseCase) Sync(ctx context.Context, stop chan struct{}) error {
 
 			for _, unfinishedOrder := range allOrders {
 				select {
-				case <-stop:
+				case <-ctx.Done():
 					return nil // В случае получения сигнала остановки, завершаем выполнение без ошибок
 				default:
-					finishedOrder, err := GetAccrual(ctx, unfinishedOrder, stop)
+					finishedOrder, err := GetAccrual(ctx, unfinishedOrder)
 					if err != nil {
 						log.Error("error getting accrual", l.ErrAttr(err))
 						tx.Rollback()
@@ -183,7 +183,7 @@ func (uc *UseCase) Sync(ctx context.Context, stop chan struct{}) error {
 				log.Error("error committing transaction", l.ErrAttr(err))
 				continue
 			}
-		case <-stop:
+		case <-ctx.Done():
 			return nil // В случае получения сигнала остановки, завершаем выполнение без ошибок
 		}
 	}
