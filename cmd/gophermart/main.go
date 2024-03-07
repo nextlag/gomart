@@ -89,8 +89,10 @@ func main() {
 	// Ожидание получения сигнала от OS
 	<-sigs
 
-	// Закрытие канала stop и остановка http-сервера
+	// завершение контекста и остановка http-сервера
 	cansel()
+
+	// Создание контекста с таймаутом в 10 секунд для завершения работы HTTP-сервера.
 	ctxTime, canselShutdown := context.WithTimeout(context.Background(), time.Second*10)
 	defer canselShutdown()
 	if err = srv.Shutdown(ctxTime); err != nil {
